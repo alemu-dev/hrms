@@ -1,0 +1,99 @@
+.hr-portal {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 30px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+  animation: fadeIn 0.8s ease-in-out;
+}
+
+.hr-portal h1 {
+  text-align: center;
+  margin-bottom: 10px;
+  color: #0078d7;
+}
+
+.hr-portal p {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #555;
+}
+
+.hr-portal h2 {
+  margin-top: 30px;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+/* Form styling */
+.hr-portal form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px 20px;
+  margin-bottom: 30px;
+}
+
+.hr-portal form input {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.hr-portal form input:focus {
+  border-color: #0078d7;
+  box-shadow: 0 0 6px rgba(0,120,215,0.4);
+  outline: none;
+}
+
+.hr-portal form button {
+  grid-column: span 2;
+  background: linear-gradient(135deg, #0078d7, #005fa3);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: transform 0.2s, box-shadow 0.3s;
+}
+
+.hr-portal form button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+}
+
+/* Table styling */
+.hr-portal table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.hr-portal table th,
+.hr-portal table td {
+  border: 1px solid #ddd;
+  padding: 12px;
+  text-align: center;
+}
+
+.hr-portal table th {
+  background: #0078d7;
+  color: white;
+  font-weight: 600;
+}
+
+.hr-portal table tr:nth-child(even) {
+  background: #f9f9f9;
+}
+
+.hr-portal table tr:hover {
+  background: #eef6ff;
+}
+
+/* Smooth fade-in animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}

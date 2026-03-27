@@ -1,0 +1,67 @@
+.home-container {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  text-align: center;
+  color: #333;
+}
+
+.hero {
+  background: linear-gradient(135deg, #0078d7, #00c6ff);
+  color: white;
+  padding: 60px 20px;
+  border-radius: 0 0 40px 40px;
+}
+
+.hero-title {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.hero-subtitle {
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+}
+
+.hero-button {
+  background: #fff;
+  color: #0078d7;
+  border: none;
+  padding: 12px 24px;
+  font-size: 1rem;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.hero-button:hover {
+  background: #0078d7;
+  color: #fff;
+}
+
+.features {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 40px 20px;
+}
+
+.feature-card {
+  background: #f9f9f9;
+  border-radius: 15px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  margin: 15px;
+  padding: 20px;
+  width: 250px;
+  transition: transform 0.3s;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+}
+
+.footer {
+  margin-top: 40px;
+  padding: 20px;
+  background: #f0f0f0;
+  border-top: 1px solid #ddd;
+}
