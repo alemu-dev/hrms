@@ -6,45 +6,57 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('users', function (Blueprint $table) {
-        $table->id();
-        $table->string('name');
-        $table->string('email')->unique();
-        $table->timestamp('email_verified_at')->nullable();
-        $table->string('password');
-        $table->string('role')->default('user'); // 👈 add this line
-        $table->rememberToken();
-        $table->timestamps();
+        // Employee Education (one-to-many)
+        Schema::create('employee_education', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->string('level')->nullable(); // e.g. High School, Bachelor, Certificate
+            $table->string('field')->nullable(); // e.g. Computer Science, Accounting
+            $table->string('institution')->nullable();
+            $table->date('start_date')->nullable();
+            $table->date('end_date')->nullable();
+            $table->text('notes')->nullable(); // flexible description
+            $table->timestamps();
         });
 
-        Schema::create('password_reset_tokens', function (Blueprint $table) {
-            $table->string('email')->primary();
-            $table->string('token');
-            $table->timestamp('created_at')->nullable();
+        // Employee Experience (one-to-many)
+        Schema::create('employee_experience', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->string('company');
+            $table->string('role');
+            $table->date('start_date')->nullable();
+            $table->date('end_date')->nullable();
+            $table->text('responsibilities')->nullable();
+            $table->timestamps();
         });
 
-        Schema::create('sessions', function (Blueprint $table) {
-            $table->string('id')->primary();
-            $table->foreignId('user_id')->nullable()->index();
-            $table->string('ip_address', 45)->nullable();
-            $table->text('user_agent')->nullable();
-            $table->longText('payload');
-            $table->integer('last_activity')->index();
+        // Employee Biography (one-to-one)
+        Schema::create('employee_biography', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->unique()->constrained('users')->onDelete('cascade');
+            $table->longText('bio_text')->nullable();
+            $table->timestamps();
+        });
+
+        // Employee Documents (one-to-many)
+        Schema::create('employee_documents', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->string('document_type'); // e.g. CV, Certificate, ID
+            $table->string('file_path');     // storage path
+            $table->timestamp('uploaded_at')->nullable();
+            $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
-        Schema::dropIfExists('sessions');
+        Schema::dropIfExists('employee_education');
+        Schema::dropIfExists('employee_experience');
+        Schema::dropIfExists('employee_biography');
+        Schema::dropIfExists('employee_documents');
     }
 };

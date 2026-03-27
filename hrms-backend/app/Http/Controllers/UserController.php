@@ -8,6 +8,12 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
+    // ✅ List all users (GET /api/users)
+    public function index()
+    {
+        return response()->json(DB::table('users')->get());
+    }
+
     // Login API (POST /api/login)
     public function login(Request $request)
     {

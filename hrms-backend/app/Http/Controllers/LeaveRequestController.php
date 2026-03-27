@@ -34,16 +34,54 @@ class LeaveRequestController extends Controller
     // Director views all requests
     public function index()
     {
-        return LeaveRequest::with('employee')->get();
+        $leaveRequests = LeaveRequest::with('employee')->get()
+            ->map(function ($leave) {
+                return [
+                    'id'            => $leave->id,
+                    'type'          => $leave->type,
+                    'start_date'    => $leave->start_date,
+                    'end_date'      => $leave->end_date,
+                    'status'        => $leave->status,
+                    'employee_name' => $leave->employee->full_name ?? null,
+                    'department'    => $leave->employee->department ?? null,
+                    'position'      => $leave->employee->position ?? null,
+                ];
+            });
+
+        return response()->json($leaveRequests);
     }
 
     // Director approves/rejects
     public function update(Request $request, $id)
     {
+        $validated = $request->validate([
+            'status' => 'required|in:approved,rejected'
+        ]);
+
         $leave = LeaveRequest::findOrFail($id);
-        $leave->status = $request->status; // approved or rejected
+        $leave->status = $validated['status'];
         $leave->save();
 
-        return response()->json(['message' => 'Leave request updated']);
+        return response()->json([
+            'message' => 'Leave request updated',
+            'leave'   => $leave
+        ]);
+    }
+
+    // ✅ Employee views their own leave requests
+    public function indexByEmployee($employeeId)
+    {
+        $leaveRequests = LeaveRequest::where('employee_id', $employeeId)->get()
+            ->map(function ($leave) {
+                return [
+                    'id'         => $leave->id,
+                    'type'       => $leave->type,
+                    'start_date' => $leave->start_date,
+                    'end_date'   => $leave->end_date,
+                    'status'     => $leave->status,
+                ];
+            });
+
+        return response()->json($leaveRequests);
     }
 }

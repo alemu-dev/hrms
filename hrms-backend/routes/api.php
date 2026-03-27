@@ -4,6 +4,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\LeaveRequestController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\EmployeeEducationController;
+use App\Http\Controllers\EmployeeExperienceController;
+use App\Http\Controllers\EmployeeBiographyController;
+use App\Http\Controllers\EmployeeDocumentController;
 
 // Login route
 Route::post('/login', [UserController::class, 'login']);
@@ -27,3 +31,25 @@ Route::delete('/employees/{id}', [EmployeeController::class, 'destroy']); // del
 
 // ✅ New route: fetch employee profile by user_id (for EmployeeWorkspace)
 Route::get('/employee-profile/{userId}', [EmployeeController::class, 'showByUser']);
+
+
+Route::post('/employee-education', [EmployeeEducationController::class, 'store']);
+Route::get('/employee-education', [EmployeeEducationController::class, 'all']); // list all
+Route::get('/employee-education/{userId}', [EmployeeEducationController::class, 'index']); // list by user
+
+
+// Experience
+Route::post('/employee-experience', [EmployeeExperienceController::class, 'store']);
+Route::get('/employee-experience', [EmployeeExperienceController::class, 'all']);
+Route::get('/employee-experience/{userId}', [EmployeeExperienceController::class, 'index']);
+
+// Biography
+Route::post('/employee-biography', [EmployeeBiographyController::class, 'store']);
+Route::get('/employee-biography', [EmployeeBiographyController::class, 'all']);
+Route::get('/employee-biography/{userId}', [EmployeeBiographyController::class, 'show']);
+
+// Documents
+Route::post('/employee-documents', [EmployeeDocumentController::class, 'store']);
+Route::get('/employee-documents', [EmployeeDocumentController::class, 'all']);
+Route::get('/employee-documents/{userId}', [EmployeeDocumentController::class, 'index']);
+
