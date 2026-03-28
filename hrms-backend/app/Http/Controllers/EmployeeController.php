@@ -9,25 +9,43 @@ use Illuminate\Support\Facades\Hash;
 
 class EmployeeController extends Controller
 {
-    // List all employees with user info
+    // List all employees with full user + related data
     public function index()
     {
-        return response()->json(EmployeeProfile::with('user')->get());
+        return response()->json(
+            EmployeeProfile::with([
+                'user.biography',
+                'user.education',
+                'user.experience',
+                'user.documents'
+            ])->get()
+        );
     }
 
     // Show single employee by profile ID
     public function show($id)
     {
-        $employee = EmployeeProfile::with('user')->findOrFail($id);
+        $employee = EmployeeProfile::with([
+            'user.biography',
+            'user.education',
+            'user.experience',
+            'user.documents'
+        ])->findOrFail($id);
+
         return response()->json($employee);
     }
 
-    // ✅ Show employee profile by user_id (for EmployeeWorkspace)
+    // Show employee profile by user_id (for EmployeeWorkspace)
     public function showByUser($userId)
     {
-        $employee = EmployeeProfile::with('user')
-            ->where('user_id', $userId)
-            ->firstOrFail();
+        $employee = EmployeeProfile::with([
+            'user.biography',
+            'user.education',
+            'user.experience',
+            'user.documents'
+        ])
+        ->where('user_id', $userId)
+        ->firstOrFail();
 
         return response()->json($employee);
     }

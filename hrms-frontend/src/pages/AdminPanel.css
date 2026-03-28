@@ -1,18 +1,18 @@
 body {
   margin: 0;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: url('stica.webp') no-repeat center center fixed;
+  background: url('11.jpg') no-repeat center center fixed;
   background-size: cover;
 }
 
-/* Add a blur overlay on the background */
+/* Bright overlay instead of blur */
 body::before {
   content: "";
   position: fixed;
   top: 0; left: 0;
   width: 100%; height: 100%;
-  backdrop-filter: blur(8px);
-  background-color: rgba(255, 255, 255, 0.3);
+  backdrop-filter: brightness(1.1); /* brighten image slightly */
+  background-color: rgba(255, 255, 255, 0.05); /* very subtle overlay */
   z-index: -1;
 }
 
@@ -20,9 +20,9 @@ body::before {
   max-width: 420px;
   margin: 60px auto;
   padding: 30px;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.9); /* brighter card */
   border-radius: 16px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.25);
   text-align: center;
   animation: fadeIn 0.8s ease-in-out;
 }
@@ -36,14 +36,16 @@ body::before {
 .admin-form label {
   font-weight: 600;
   margin-bottom: 6px;
-  color: #333;
+  color: #222; /* darker text for clarity */
 }
 
 .admin-form input, .admin-form select {
   padding: 10px;
-  border: 1px solid #ccc;
+  border: 1px solid #bbb;
   border-radius: 8px;
   transition: border-color 0.3s, box-shadow 0.3s;
+  background: #fff;
+  color: #111;
 }
 
 .admin-form input:focus, .admin-form select:focus {
@@ -65,7 +67,7 @@ button {
 
 button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.25);
 }
 
 .success-message {

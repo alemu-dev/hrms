@@ -1,57 +1,159 @@
 .director-console {
-  max-width: 900px;
-  margin: 40px auto;
-  padding: 30px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 16px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-  animation: fadeIn 0.8s ease-in-out;
+  display: flex;
+  min-height: 100vh;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  background: #f4f6f9;
 }
 
-.director-console h1 {
-  text-align: center;
-  color: #0078d7;
+.sidebar {
+  width: 250px;
+  background: #0078d7;
+  color: white;
+  padding: 20px;
+}
+
+.sidebar h2 {
+  margin-bottom: 15px;
+}
+
+.employee-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.employee-card {
+  background: rgba(255,255,255,0.1);
+  padding: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.employee-card:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+.employee-card.active {
+  background: #005fa3;
+}
+
+.details {
+  flex: 1;
+  padding: 30px;
 }
 
 .profile-card {
-  background: #eef6ff;
+  background: white;
   padding: 20px;
-  border-radius: 12px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   margin-bottom: 30px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-.profile-card h2 {
-  margin-bottom: 15px;
-  color: #333;
+.section {
+  margin-top: 20px;
 }
 
-.director-console table {
+.section h3 {
+  border-bottom: 2px solid #0078d7;
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+}
+
+.item {
+  margin-bottom: 5px;
+}
+
+.doc-link {
+  color: #0078d7;
+  text-decoration: none;
+}
+
+.doc-link:hover {
+  text-decoration: underline;
+}
+
+.leave-section {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.leave-section table {
   width: 100%;
   border-collapse: collapse;
 }
 
-.director-console table th,
-.director-console table td {
+.leave-section th, .leave-section td {
   border: 1px solid #ddd;
-  padding: 12px;
+  padding: 10px;
   text-align: center;
 }
 
-.director-console table th {
+.leave-section th {
   background: #0078d7;
   color: white;
 }
 
-.director-console table tr:nth-child(even) {
-  background: #f9f9f9;
+.status.approved { color: green; font-weight: bold; }
+.status.rejected { color: red; font-weight: bold; }
+.status.pending { color: orange; font-weight: bold; }
+
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
 }
 
-.director-console table tr:hover {
-  background: #eef6ff;
+button.approve {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+button.reject {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+}
+
+.leave-history {
+  margin-top: 20px;
+}
+
+.leave-history button {
+  background: #0078d7;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.leave-history button:hover {
+  background: #005fa3;
+}
+
+.leave-history table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leave-history th, .leave-history td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: center;
+}
+
+.leave-history th {
+  background: #0078d7;
+  color: white;
 }

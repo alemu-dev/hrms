@@ -9,6 +9,7 @@ export default function EmployeeWorkspace() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [message, setMessage] = useState("");
+  const [showProfile, setShowProfile] = useState(false); // NEW toggle state
 
   // Load employee profile and leave requests
   useEffect(() => {
@@ -22,13 +23,13 @@ export default function EmployeeWorkspace() {
       .then(res => res.json())
       .then(data => {
         setEmployee(data);
-        // Fetch leave requests for this employee
+
         fetch(`http://127.0.0.1:8000/api/leave-requests/${data.id}`)
           .then(res => res.json())
           .then(reqs => setLeaveRequests(reqs))
-          .catch(err => console.error(err));
+          .catch(err => console.error("Error loading leave requests:", err));
       })
-      .catch(err => console.error(err));
+      .catch(err => console.error("Error loading employee profile:", err));
   }, []);
 
   // Handle leave request submission
@@ -61,7 +62,6 @@ export default function EmployeeWorkspace() {
         setEndDate("");
         setShowLeaveForm(false);
 
-        // Refresh leave requests
         fetch(`http://127.0.0.1:8000/api/leave-requests/${employee.id}`)
           .then(res => res.json())
           .then(reqs => setLeaveRequests(reqs));
@@ -85,7 +85,15 @@ export default function EmployeeWorkspace() {
       <h1>Employee Workspace</h1>
       <p>Welcome Employee! View your profile, tasks, and company updates here.</p>
 
+      {/* Toggle button for profile */}
       {employee && (
+        <button onClick={() => setShowProfile(!showProfile)}>
+          {showProfile ? "Hide Profile" : "See Profile"}
+        </button>
+      )}
+
+      {/* Profile section */}
+      {employee && showProfile && (
         <div className="profile-card">
           <h2>Your Profile</h2>
           <p><strong>Name:</strong> {employee.full_name}</p>
@@ -94,9 +102,55 @@ export default function EmployeeWorkspace() {
           <p><strong>Position:</strong> {employee.position}</p>
           <p><strong>Salary:</strong> {employee.salary}</p>
           <p><strong>Status:</strong> {employee.status}</p>
+
+          <section className="section">
+            <h3>Biography</h3>
+            <p>{employee?.user?.biography?.bio_text || "No biography available"}</p>
+          </section>
+
+          <section className="section">
+            <h3>Education</h3>
+            {employee?.user?.education?.length > 0 ? (
+              employee.user.education.map((e, i) => (
+                <div key={i} className="item">
+                  <b>{e.level}</b> – {e.field}
+                </div>
+              ))
+            ) : <p>No education records</p>}
+          </section>
+
+          <section className="section">
+            <h3>Experience</h3>
+            {employee?.user?.experience?.length > 0 ? (
+              employee.user.experience.map((e, i) => (
+                <div key={i} className="item">
+                  <b>{e.role}</b> at {e.company}
+                </div>
+              ))
+            ) : <p>No experience records</p>}
+          </section>
+
+          <section className="section">
+            <h3>Documents</h3>
+            {employee?.user?.documents?.length > 0 ? (
+              employee.user.documents.map((d, i) => (
+                <div key={i}>
+                  <a
+                    href={`http://127.0.0.1:8000/storage/${d.file_path}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="doc-link"
+                  >
+                    {d.document_type}
+                  </a>
+                </div>
+              ))
+            ) : <p>No documents uploaded</p>}
+          </section>
         </div>
       )}
 
+      {/* Leave form toggle */}
       <button onClick={() => setShowLeaveForm(!showLeaveForm)}>
         Ask for Leave
       </button>
@@ -137,7 +191,7 @@ export default function EmployeeWorkspace() {
               <td>{req.type}</td>
               <td>{req.start_date}</td>
               <td>{req.end_date}</td>
-              <td>{req.status}</td>
+              <td className={`status ${req.status}`}>{req.status}</td>
             </tr>
           ))}
         </tbody>
