@@ -9,6 +9,12 @@ export default function DirectorConsole() {
   const [showHistory, setShowHistory] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // NEW: Overview state
+  const [date, setDate] = useState("");
+  const [announcement, setAnnouncement] = useState("");
+  const [systemStatus, setSystemStatus] = useState("");
+  const [overviewMessage, setOverviewMessage] = useState("");
+
   // LOAD EMPLOYEES
   useEffect(() => {
     fetch("http://127.0.0.1:8000/api/employees")
@@ -47,7 +53,6 @@ export default function DirectorConsole() {
       )
     );
 
-    // Add to history list with timestamp
     const decidedReq = leaveRequests.find(r => r.id === id);
     if (decidedReq) {
       setLeaveHistory(prev => [
@@ -62,20 +67,45 @@ export default function DirectorConsole() {
     const timer = setInterval(() => {
       const now = new Date();
       if (now.getHours() === 23 && now.getMinutes() === 59) {
-        // Move all non-pending requests into history
         setLeaveHistory(prev => [
           ...prev,
           ...leaveRequests
             .filter(r => r.status !== "pending")
             .map(r => ({ ...r, decisionDate: new Date() }))
         ]);
-        // Keep only pending in active list
         setLeaveRequests(prev => prev.filter(r => r.status === "pending"));
       }
-    }, 60000); // check every minute
+    }, 60000);
 
     return () => clearInterval(timer);
   }, [leaveRequests]);
+
+  // NEW: Handle Overview submission
+  const handleOverviewSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/overview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date,
+          announcement,
+          system_status: systemStatus
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setOverviewMessage("✅ Overview updated successfully");
+        setDate("");
+        setAnnouncement("");
+        setSystemStatus("");
+      } else {
+        setOverviewMessage("❌ Failed to update overview");
+      }
+    } catch (err) {
+      setOverviewMessage("❌ Error updating overview");
+    }
+  };
 
   return (
     <div className="director-console">
@@ -113,19 +143,29 @@ export default function DirectorConsole() {
               <p><b>Department:</b> {selectedEmployee.department}</p>
               <p><b>Position:</b> {selectedEmployee.position}</p>
               <p><b>Salary:</b> {selectedEmployee.salary}</p>
+              <p><b>Status:</b> {selectedEmployee.status}</p>
             </section>
 
             <section className="section">
               <h3>Biography</h3>
-              <p>{selectedEmployee?.user?.biography?.bio_text || "No biography available"}</p>
+              {selectedEmployee?.user?.biography ? (
+                <div className="item">
+                  <p><strong>Bio:</strong> {selectedEmployee.user.biography.bio_text}</p>
+                </div>
+              ) : <p>No biography available</p>}
             </section>
 
             <section className="section">
               <h3>Education</h3>
               {selectedEmployee?.user?.education?.length > 0 ? (
-                selectedEmployee.user.education.map((e, i) => (
+                selectedEmployee.user.education.map((edu, i) => (
                   <div key={i} className="item">
-                    <b>{e.level}</b> – {e.field}
+                    <p><strong>Level:</strong> {edu.level}</p>
+                    <p><strong>Field:</strong> {edu.field}</p>
+                    <p><strong>Institution:</strong> {edu.institution}</p>
+                    <p><strong>Start Date:</strong> {edu.start_date}</p>
+                    <p><strong>End Date:</strong> {edu.end_date}</p>
+                    <p><strong>Notes:</strong> {edu.notes}</p>
                   </div>
                 ))
               ) : <p>No education records</p>}
@@ -134,9 +174,13 @@ export default function DirectorConsole() {
             <section className="section">
               <h3>Experience</h3>
               {selectedEmployee?.user?.experience?.length > 0 ? (
-                selectedEmployee.user.experience.map((e, i) => (
+                selectedEmployee.user.experience.map((exp, i) => (
                   <div key={i} className="item">
-                    <b>{e.role}</b> at {e.company}
+                    <p><strong>Role:</strong> {exp.role}</p>
+                    <p><strong>Company:</strong> {exp.company}</p>
+                    <p><strong>Start Date:</strong> {exp.start_date}</p>
+                    <p><strong>End Date:</strong> {exp.end_date}</p>
+                    <p><strong>Responsibilities:</strong> {exp.responsibilities}</p>
                   </div>
                 ))
               ) : <p>No experience records</p>}
@@ -145,16 +189,20 @@ export default function DirectorConsole() {
             <section className="section">
               <h3>Documents</h3>
               {selectedEmployee?.user?.documents?.length > 0 ? (
-                selectedEmployee.user.documents.map((d, i) => (
-                  <div key={i}>
-                    <a
-                      href={`http://127.0.0.1:8000/storage/${d.file_path}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="doc-link"
-                    >
-                      {d.document_type}
-                    </a>
+                selectedEmployee.user.documents.map((doc, i) => (
+                  <div key={i} className="item">
+                    <p><strong>Type:</strong> {doc.document_type}</p>
+                    <p>
+                      <a
+                        href={`http://127.0.0.1:8000/storage/${doc.file_path}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="doc-link"
+                      >
+                        View Document
+                      </a>
+                    </p>
+                    <p><strong>Uploaded At:</strong> {doc.uploaded_at}</p>
                   </div>
                 ))
               ) : <p>No documents uploaded</p>}
@@ -162,7 +210,25 @@ export default function DirectorConsole() {
           </div>
         )}
 
-        {/* Leave Requests */}
+        {/* NEW: Overview Form */}
+        <section className="section overview-form">
+          <h2>Update Today’s Overview</h2>
+          <form onSubmit={handleOverviewSubmit}>
+            <label>Date</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} required />
+
+            <label>Announcement</label>
+            <input type="text" value={announcement} onChange={e => setAnnouncement(e.target.value)} required />
+
+            <label>System Status</label>
+            <input type="text" value={systemStatus} onChange={e => setSystemStatus(e.target.value)} required />
+
+            <button type="submit">Publish</button>
+          </form>
+          {overviewMessage && <p className="message">{overviewMessage}</p>}
+        </section>
+
+                {/* Leave Requests */}
         <div className="leave-section">
           <h2>Leave Requests</h2>
           <table>
@@ -187,8 +253,18 @@ export default function DirectorConsole() {
                   <td>
                     {req.status === "pending" && (
                       <div className="actions">
-                        <button className="approve" onClick={() => handleDecision(req.id, "approved")}>Approve</button>
-                        <button className="reject" onClick={() => handleDecision(req.id, "rejected")}>Reject</button>
+                        <button
+                          className="approve"
+                          onClick={() => handleDecision(req.id, "approved")}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          className="reject"
+                          onClick={() => handleDecision(req.id, "rejected")}
+                        >
+                          Reject
+                        </button>
                       </div>
                     )}
                   </td>

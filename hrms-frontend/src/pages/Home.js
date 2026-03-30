@@ -1,7 +1,23 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./Home.css";
 
 export default function Home() {
+  const [overview, setOverview] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("http://127.0.0.1:8000/api/overview")
+      .then(res => res.json())
+      .then(data => {
+        setOverview(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Error loading overview:", err);
+        setLoading(false);
+      });
+  }, []);
+
   const today = new Date().toLocaleDateString();
   const [showServices, setShowServices] = useState(false);
 
@@ -24,9 +40,10 @@ export default function Home() {
       {/* Daily Info */}
       <section className="daily-info card">
         <h2>📅 Today’s Overview</h2>
-        <p><b>Date:</b> {today}</p>
-        <p><b>📢 Announcement:</b> Staff meeting at 3:00 PM in the main hall.</p>
-        <p><b>⚡ System Status:</b> All systems operational</p>
+        <p><b>Date:</b> {overview?.date || today}</p>
+        <p><b>📢 Announcement:</b> {overview?.announcement || "No announcements yet"}</p>
+        <p><b>⚡ System Status:</b> {overview?.system_status || "No status available"}</p>
+        {loading && <p>Loading overview...</p>}
       </section>
 
       {/* Services */}
@@ -45,7 +62,7 @@ export default function Home() {
               <p>Recruitment, onboarding, and employee lifecycle management.</p>
             </div>
             <div className="service-card">
-              <h2> Director Console</h2>
+              <h2>Director Console</h2>
               <p>Real-time analytics, reports, and strategic insights.</p>
             </div>
             <div className="service-card">

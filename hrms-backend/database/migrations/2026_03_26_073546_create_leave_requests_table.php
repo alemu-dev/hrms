@@ -1,21 +1,26 @@
 <?php
 
-namespace App\Models;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-class LeaveRequest extends Model
+return new class extends Migration
 {
-    use HasFactory;
+    public function up(): void
+    {
+        Schema::create('leave_requests', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->date('start_date');
+            $table->date('end_date')->nullable();
+            $table->string('reason')->nullable();
+            $table->string('status')->default('pending'); // pending, approved, rejected
+            $table->timestamps();
+        });
+    }
 
-    protected $table = 'leave_requests'; // 👈 matches your migration table
-
-    protected $fillable = [
-        'employee_id',
-        'type',
-        'start_date',
-        'end_date',
-        'status',
-    ];
-}
+    public function down(): void
+    {
+        Schema::dropIfExists('leave_requests');
+    }
+};

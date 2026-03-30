@@ -9,11 +9,11 @@ export default function EmployeeWorkspace() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [message, setMessage] = useState("");
-  const [showProfile, setShowProfile] = useState(false); // NEW toggle state
+  const [showProfile, setShowProfile] = useState(false);
 
   // Load employee profile and leave requests
   useEffect(() => {
-    const userId = localStorage.getItem("userId"); 
+    const userId = localStorage.getItem("userId");
     if (!userId) {
       setMessage("❌ No logged-in user found.");
       return;
@@ -105,15 +105,24 @@ export default function EmployeeWorkspace() {
 
           <section className="section">
             <h3>Biography</h3>
-            <p>{employee?.user?.biography?.bio_text || "No biography available"}</p>
+            {employee?.user?.biography ? (
+              <div className="item">
+                <p><strong>Bio:</strong> {employee.user.biography.bio_text}</p>
+              </div>
+            ) : <p>No biography available</p>}
           </section>
 
           <section className="section">
             <h3>Education</h3>
             {employee?.user?.education?.length > 0 ? (
-              employee.user.education.map((e, i) => (
+              employee.user.education.map((edu, i) => (
                 <div key={i} className="item">
-                  <b>{e.level}</b> – {e.field}
+                  <p><strong>Level:</strong> {edu.level}</p>
+                  <p><strong>Field:</strong> {edu.field}</p>
+                  <p><strong>Institution:</strong> {edu.institution}</p>
+                  <p><strong>Start Date:</strong> {edu.start_date}</p>
+                  <p><strong>End Date:</strong> {edu.end_date}</p>
+                  <p><strong>Notes:</strong> {edu.notes}</p>
                 </div>
               ))
             ) : <p>No education records</p>}
@@ -122,9 +131,13 @@ export default function EmployeeWorkspace() {
           <section className="section">
             <h3>Experience</h3>
             {employee?.user?.experience?.length > 0 ? (
-              employee.user.experience.map((e, i) => (
+              employee.user.experience.map((exp, i) => (
                 <div key={i} className="item">
-                  <b>{e.role}</b> at {e.company}
+                  <p><strong>Role:</strong> {exp.role}</p>
+                  <p><strong>Company:</strong> {exp.company}</p>
+                  <p><strong>Start Date:</strong> {exp.start_date}</p>
+                  <p><strong>End Date:</strong> {exp.end_date}</p>
+                  <p><strong>Responsibilities:</strong> {exp.responsibilities}</p>
                 </div>
               ))
             ) : <p>No experience records</p>}
@@ -133,16 +146,20 @@ export default function EmployeeWorkspace() {
           <section className="section">
             <h3>Documents</h3>
             {employee?.user?.documents?.length > 0 ? (
-              employee.user.documents.map((d, i) => (
-                <div key={i}>
-                  <a
-                    href={`http://127.0.0.1:8000/storage/${d.file_path}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="doc-link"
-                  >
-                    {d.document_type}
-                  </a>
+              employee.user.documents.map((doc, i) => (
+                <div key={i} className="item">
+                  <p><strong>Type:</strong> {doc.document_type}</p>
+                  <p>
+                    <a
+                      href={`http://127.0.0.1:8000/storage/${doc.file_path}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="doc-link"
+                    >
+                      View Document
+                    </a>
+                  </p>
+                  <p><strong>Uploaded At:</strong> {doc.uploaded_at}</p>
                 </div>
               ))
             ) : <p>No documents uploaded</p>}

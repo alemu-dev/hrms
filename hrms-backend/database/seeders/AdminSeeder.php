@@ -13,20 +13,8 @@ class AdminSeeder extends Seeder
         DB::table('users')->insert([
             'name'       => 'System Administrator',
             'email'      => 'admin@example.com',
-            'password'   => Hash::make('12345'),
+            'password'   => Hash::make('12345'), // hashed password
             'role'       => 'admin',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        DB::table('employee_profiles')->insert([
-            'user_id'    => 1, // links to the admin user
-            'full_name'  => 'System Administrator',
-            'department' => 'ICT',
-            'position'   => 'Administrator',
-            'salary'     => 5000,
-            'hire_date'  => now(),
-            'status'     => 'active',
             'created_at' => now(),
             'updated_at' => now(),
         ]);

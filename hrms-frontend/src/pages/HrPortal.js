@@ -1,22 +1,29 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./HrPortal.css";
 
+/*
+  HrPortal.js - full CRUD for employees + education/experience/biography/documents
+  Uses your provided endpoints. Adjust API_BASE if needed.
+  NOTE: Logic is kept intact; layout moved so Employee Directory appears above the profile/form.
+*/
 
 export default function HrPortal() {
-  // Core state
+  const API_BASE = "http://127.0.0.1:8000/api";
+
+  // Core
   const [employees, setEmployees] = useState([]);
   const [message, setMessage] = useState("");
 
-  // UI state
+  // UI
   const [searchTerm, setSearchTerm] = useState("");
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Selected/Editing employee
+  // Selected employee and edit state
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [editingId, setEditingId] = useState(null);
+  const [editingEmployeeId, setEditingEmployeeId] = useState(null);
 
-  // Form fields (employee)
+  // Employee form
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,40 +33,43 @@ export default function HrPortal() {
   const [hireDate, setHireDate] = useState("");
   const [status, setStatus] = useState("active");
 
-  // Education (single quick form)
-  const [level, setLevel] = useState("");
-  const [field, setField] = useState("");
-  const [institution, setInstitution] = useState("");
-  const [eduStart, setEduStart] = useState("");
-  const [eduEnd, setEduEnd] = useState("");
-  const [eduNotes, setEduNotes] = useState("");
+  // Education
+  const [educationList, setEducationList] = useState([]);
+  const [eduForm, setEduForm] = useState({ id: null, level: "", field: "", institution: "", start_date: "", end_date: "", notes: "" });
+  const [editingEduId, setEditingEduId] = useState(null);
 
   // Experience
-  const [company, setCompany] = useState("");
-  const [role, setRole] = useState("");
-  const [expStart, setExpStart] = useState("");
-  const [expEnd, setExpEnd] = useState("");
-  const [responsibilities, setResponsibilities] = useState("");
+  const [experienceList, setExperienceList] = useState([]);
+  const [expForm, setExpForm] = useState({ id: null, company: "", role: "", start_date: "", end_date: "", responsibilities: "" });
+  const [editingExpId, setEditingExpId] = useState(null);
 
   // Biography
-  const [bioText, setBioText] = useState("");
+  const [biographyList, setBiographyList] = useState([]);
+  const [bioForm, setBioForm] = useState({ id: null, bio_text: "" });
+  const [editingBioId, setEditingBioId] = useState(null);
 
   // Documents
+  const [documents, setDocuments] = useState([]);
   const [docType, setDocType] = useState("");
   const [file, setFile] = useState(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState(null);
-  const [documents, setDocuments] = useState([]);
-  const [previewDoc, setPreviewDoc] = useState(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [uploadingDocument, setUploadingDocument] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Tabs on the right side of profile
+  // Tabs
   const [activeTab, setActiveTab] = useState("overview");
 
-  // Derived lists
+  // Loading flags
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
+  const [savingEmployee, setSavingEmployee] = useState(false);
+  const [savingEdu, setSavingEdu] = useState(false);
+  const [savingExp, setSavingExp] = useState(false);
+  const [savingBio, setSavingBio] = useState(false);
+
+  // Helpers: filtered / paginated employees
   const filteredEmployees = employees.filter(emp =>
     (emp.full_name || emp.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ((emp.user && emp.user.email) || emp.email || "").toLowerCase().includes(searchTerm.toLowerCase())
+    (((emp.user && emp.user.email) || emp.email || "").toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const paginatedEmployees = filteredEmployees.slice(
@@ -67,49 +77,125 @@ export default function HrPortal() {
     (currentPage - 1) * pageSize + pageSize
   );
 
-  // Load employees and documents
+  // Decide which id to use for related resources (user_id vs employee id)
+  function getTargetId() {
+    if (editingEmployeeId) return editingEmployeeId;
+    if (!selectedEmployee) return null;
+    return selectedEmployee.user_id || selectedEmployee.id || selectedEmployee.user?.id || null;
+  }
+
+  // Generic safe parser: tries JSON then falls back to text (prevents crash when server returns HTML)
+  async function safeParseResponseToObject(res) {
+    const text = await res.text();
+    try {
+      return { json: JSON.parse(text), text };
+    } catch {
+      return { json: null, text };
+    }
+  }
+
+  // Generic error reader that handles HTML pages too
+  async function readError(res) {
+    try {
+      const parsed = await safeParseResponseToObject(res);
+      if (parsed.json) {
+        if (parsed.json.message) return parsed.json.message;
+        if (parsed.json.errors) return JSON.stringify(parsed.json.errors);
+        return JSON.stringify(parsed.json);
+      }
+      // If text looks like HTML, return a compacted snippet
+      const txt = (parsed.text || `HTTP ${res.status}`).toString();
+      if (txt.trim().startsWith("<")) {
+        // compact HTML: strip tags and long whitespace
+        return txt.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "").replace(/<\/?[^>]+(>|$)/g, " ").replace(/\s+/g, " ").trim().slice(0, 1000);
+      }
+      return txt || `HTTP ${res.status}`;
+    } catch (err) {
+      return `HTTP ${res.status}`;
+    }
+  }
+
+  // Initial load
   useEffect(() => {
     loadEmployees();
-    loadDocuments();
-    return () => {
-      if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
-    };
+    return () => { if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Load employees list
   async function loadEmployees() {
+    setLoadingEmployees(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/employees");
+      const res = await fetch(`${API_BASE}/employees`, { headers: { "Accept": "application/json" } });
+      if (!res.ok) {
+        const err = await readError(res);
+        throw new Error(err);
+      }
       const data = await res.json();
-      // If backend returns { data: [...] } adapt
-      setEmployees(Array.isArray(data) ? data : data?.data || []);
+      setEmployees(Array.isArray(data) ? data : (data?.data || []));
     } catch (err) {
-      console.error(err);
-      setMessage("Failed to load employees");
-      setTimeout(() => setMessage(""), 2500);
+      console.error("loadEmployees", err);
+      setMessage("Failed to load employees: " + (err.message || err));
+      setTimeout(() => setMessage(""), 4000);
+    } finally {
+      setLoadingEmployees(false);
     }
   }
 
-  async function loadDocuments() {
+  // Load selected employee full details
+  async function loadEmployeeDetail(targetId) {
+    if (!targetId) return null;
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/employee-documents");
-      const data = await res.json();
-      setDocuments(Array.isArray(data) ? data : data?.data || []);
+      const res = await fetch(`${API_BASE}/employees/${targetId}`, { headers: { "Accept": "application/json" } });
+      if (!res.ok) throw new Error(await readError(res));
+      const js = await res.json();
+      const rec = js?.data || js;
+      return rec;
     } catch (err) {
-      console.error(err);
-      setDocuments([]);
+      console.error("loadEmployeeDetail", err);
+      return null;
     }
   }
 
-  // Select an employee to view in profile
-  function openProfile(emp) {
-    // If emp contains partial data and you want full details you can fetch detail here:
-    // fetch(`http://127.0.0.1:8000/api/employees/${emp.id}`).then...
+  // Load related lists for a user/employee
+  async function loadRelatedForUser(userId) {
+    if (!userId) {
+      setEducationList([]); setExperienceList([]); setBiographyList([]); setDocuments([]);
+      return;
+    }
+    try {
+      // Education
+      const edRes = await fetch(`${API_BASE}/employee-education/${userId}`, { headers: { "Accept": "application/json" } });
+      const edJson = edRes.ok ? await edRes.json() : null;
+      setEducationList(edJson ? (Array.isArray(edJson) ? edJson : edJson?.data || []) : []);
+
+      // Experience
+      const exRes = await fetch(`${API_BASE}/employee-experience/${userId}`, { headers: { "Accept": "application/json" } });
+      const exJson = exRes.ok ? await exRes.json() : null;
+      setExperienceList(exJson ? (Array.isArray(exJson) ? exJson : exJson?.data || []) : []);
+
+      // Biography
+      const bioRes = await fetch(`${API_BASE}/employee-biography/${userId}`, { headers: { "Accept": "application/json" } });
+      const bioJson = bioRes.ok ? await bioRes.json() : null;
+      setBiographyList(bioJson ? (Array.isArray(bioJson) ? bioJson : bioJson?.data ? (Array.isArray(bioJson.data) ? bioJson.data : [bioJson.data]) : (bioJson ? [bioJson] : [])) : []);
+
+      // Documents
+      const docsRes = await fetch(`${API_BASE}/employee-documents/${userId}`, { headers: { "Accept": "application/json" } });
+      const docsJson = docsRes.ok ? await docsRes.json() : null;
+      setDocuments(docsJson ? (Array.isArray(docsJson) ? docsJson : docsJson?.data || []) : []);
+    } catch (err) {
+      console.error("loadRelatedForUser", err);
+    }
+  }
+
+  // Open profile and load related lists
+  async function openProfile(emp) {
     setSelectedEmployee(emp);
-    setEditingId(emp.id || emp.user_id || null);
-    // populate form fields for edit (use fallback names)
+    const id = emp.id || emp.user_id || emp.user?.id || null;
+    setEditingEmployeeId(id);
+    // populate employee form
     setFullName(emp.full_name || emp.name || "");
-    setEmail((emp.user && emp.user.email) || emp.email || "");
+    setEmail(emp.user?.email || emp.email || "");
     setPassword("");
     setDepartment(emp.department || "");
     setPosition(emp.position || "");
@@ -117,17 +203,20 @@ export default function HrPortal() {
     setHireDate(emp.hire_date || "");
     setStatus(emp.status || "active");
     setActiveTab("overview");
+    if (id) await loadRelatedForUser(id);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  // Employee save (create/update)
+  // Employee save (create / update)
   async function handleSaveEmployee(e) {
     e.preventDefault();
+    if (savingEmployee) return;
+    setSavingEmployee(true);
+
+    const targetId = editingEmployeeId || (selectedEmployee && (selectedEmployee.id || selectedEmployee.user_id));
     const payload = {
       name: fullName,
       email,
-      password: password || undefined,
-      role: "employee",
       full_name: fullName,
       department,
       position,
@@ -135,90 +224,285 @@ export default function HrPortal() {
       hire_date: hireDate,
       status
     };
+    if (password && password.trim() !== "") payload.password = password;
 
     try {
-      let response;
-      if (editingId) {
-        response = await fetch(`http://127.0.0.1:8000/api/employees/${editingId}`, {
+      let res;
+      if (targetId) {
+        res = await fetch(`${API_BASE}/employees/${targetId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
           body: JSON.stringify(payload)
         });
+        if (!res.ok) throw new Error(await readError(res));
+        setMessage("Employee updated");
       } else {
-        response = await fetch("http://127.0.0.1:8000/api/employees", {
+        res = await fetch(`${API_BASE}/employees`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
           body: JSON.stringify(payload)
         });
+        if (!res.ok) throw new Error(await readError(res));
+        setMessage("Employee created");
       }
 
-      const data = await response.json();
-      if (response.ok) {
-        setMessage(editingId ? "Employee updated" : "Employee added");
-        await loadEmployees();
-        setTimeout(() => setMessage(""), 3000);
-        // after adding an employee, if creating we set editingId to newly created user's id so HR can add education/docs immediately
-        if (!editingId) {
-          const newId = data?.id || data?.user_id || (Array.isArray(data) && data[0]?.id) || null;
-          if (newId) {
-            setEditingId(newId);
-            // optionally fetch newly created full record
-            try {
-              const det = await fetch(`http://127.0.0.1:8000/api/employees/${newId}`);
-              if (det.ok) {
-                const j = await det.json();
-                setSelectedEmployee(j?.data || j);
-              }
-            } catch {}
-          }
-        } else {
-          // refresh selectedEmployee
-          try {
-            const det = await fetch(`http://127.0.0.1:8000/api/employees/${editingId}`);
-            if (det.ok) {
-              const j = await det.json();
-              setSelectedEmployee(j?.data || j);
-            }
-          } catch {}
+      // Refresh list
+      await loadEmployees();
+
+      // Attempt to get returned id and load fresh record
+      let returned = null;
+      try { returned = await res.json(); } catch (_) { returned = null; }
+      const newId = returned?.data?.id || returned?.id || returned?.data?.user_id || returned?.user_id || targetId;
+      if (newId) {
+        const fresh = await loadEmployeeDetail(newId);
+        if (fresh) {
+          setSelectedEmployee(fresh);
+          setEditingEmployeeId(fresh.user_id || fresh.id || newId);
+          await loadRelatedForUser(fresh.user_id || fresh.id || newId);
         }
-        // keep editingId so HR can add education/experience/docs
-      } else {
-        setMessage("Error: " + (data.message || "Could not save"));
       }
+
+      setTimeout(() => setMessage(""), 3000);
     } catch (err) {
-      console.error(err);
-      setMessage("Error saving employee");
+      console.error("handleSaveEmployee", err);
+      setMessage("Save employee failed: " + (err.message || err));
+      setTimeout(() => setMessage(""), 5000);
     } finally {
-      setTimeout(() => setMessage(""), 4000);
+      setSavingEmployee(false);
     }
   }
 
   // Delete employee
-  async function handleDeleteEmployee(id) {
+  async function handleDeleteEmployee(emp) {
+    const id = emp.id || emp.user_id || emp.user?.id;
+    if (!id) return alert("Missing id");
     if (!window.confirm("Delete this employee?")) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/employees/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setEmployees(prev => prev.filter(p => p.id !== id && p.user_id !== id));
-        setMessage("Employee deleted");
-        setTimeout(() => setMessage(""), 3000);
-        if (selectedEmployee?.id === id) {
-          setSelectedEmployee(null);
-          setEditingId(null);
-        }
-      } else {
-        setMessage("Could not delete");
-        setTimeout(() => setMessage(""), 3000);
+      const res = await fetch(`${API_BASE}/employees/${id}`, { method: "DELETE", headers: { "Accept": "application/json" } });
+      if (!res.ok) throw new Error(await readError(res));
+      setEmployees(prev => prev.filter(p => String(p.id) !== String(id) && String(p.user_id) !== String(id)));
+      if (selectedEmployee && (selectedEmployee.id === id || selectedEmployee.user_id === id)) {
+        setSelectedEmployee(null);
+        setEditingEmployeeId(null);
+        await loadRelatedForUser(null);
       }
+      setMessage("Employee deleted");
+      setTimeout(() => setMessage(""), 3000);
     } catch (err) {
-      console.error(err);
-      setMessage("Error deleting");
+      console.error("handleDeleteEmployee", err);
+      setMessage("Delete failed: " + (err.message || err));
+      setTimeout(() => setMessage(""), 4000);
+    }
+  }
+
+  // -----------------------
+  // Education CRUD
+  // -----------------------
+  function startAddEdu() {
+    setEduForm({ id: null, level: "", field: "", institution: "", start_date: "", end_date: "", notes: "" });
+    setEditingEduId(null);
+  }
+  function startEditEdu(ed) {
+    setEduForm({ id: ed.id, level: ed.level || "", field: ed.field || "", institution: ed.institution || "", start_date: ed.start_date || "", end_date: ed.end_date || "", notes: ed.notes || "" });
+    setEditingEduId(ed.id);
+    setActiveTab("education");
+  }
+
+  async function handleSaveEducation(e) {
+    e.preventDefault();
+    if (savingEdu) return;
+    setSavingEdu(true);
+    const target = getTargetId();
+    if (!target) {
+      setMessage("Select or save an employee first");
+      setSavingEdu(false);
+      setTimeout(() => setMessage(""), 2500);
+      return;
+    }
+
+    const payload = { user_id: target, level: eduForm.level, field: eduForm.field, institution: eduForm.institution, start_date: eduForm.start_date, end_date: eduForm.end_date, notes: eduForm.notes };
+
+    try {
+      let res;
+      if (editingEduId) {
+        res = await fetch(`${API_BASE}/employee-education/${editingEduId}`, {
+          method: "PUT", headers: { "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error(await readError(res));
+        setMessage("Education updated");
+      } else {
+        res = await fetch(`${API_BASE}/employee-education`, {
+          method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error(await readError(res));
+        setMessage("Education added");
+      }
+
+      await loadRelatedForUser(target);
+      startAddEdu();
+      setTimeout(() => setMessage(""), 3000);
+    } catch (err) {
+      console.error("handleSaveEducation", err);
+      setMessage("Saving education failed: " + (err.message || err));
+      setTimeout(() => setMessage(""), 4000);
+    } finally {
+      setSavingEdu(false);
+    }
+  }
+
+  async function handleDeleteEducation(id) {
+    if (!window.confirm("Delete this education record?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/employee-education/${id}`, { method: "DELETE", headers: { "Accept": "application/json" } });
+      if (!res.ok) throw new Error(await readError(res));
+      setEducationList(prev => prev.filter(x => String(x.id) !== String(id)));
+      setMessage("Education deleted");
+      const target = getTargetId();
+      if (target) await loadRelatedForUser(target);
+      setTimeout(() => setMessage(""), 2500);
+    } catch (err) {
+      console.error("handleDeleteEducation", err);
+      setMessage("Delete failed: " + (err.message || err));
       setTimeout(() => setMessage(""), 3000);
     }
   }
 
-  // Document flows (no auto-open)
-  const onFileChange = (e) => {
+  // -----------------------
+  // Experience CRUD
+  // -----------------------
+  function startAddExp() {
+    setExpForm({ id: null, company: "", role: "", start_date: "", end_date: "", responsibilities: "" });
+    setEditingExpId(null);
+  }
+  function startEditExp(ex) {
+    setExpForm({ id: ex.id, company: ex.company || "", role: ex.role || "", start_date: ex.start_date || "", end_date: ex.end_date || "", responsibilities: ex.responsibilities || "" });
+    setEditingExpId(ex.id);
+    setActiveTab("experience");
+  }
+
+  async function handleSaveExperience(e) {
+    e.preventDefault();
+    if (savingExp) return;
+    setSavingExp(true);
+    const target = getTargetId();
+    if (!target) {
+      setMessage("Select or save an employee first");
+      setSavingExp(false);
+      setTimeout(() => setMessage(""), 2500);
+      return;
+    }
+    const payload = { user_id: target, company: expForm.company, role: expForm.role, start_date: expForm.start_date, end_date: expForm.end_date, responsibilities: expForm.responsibilities };
+    try {
+      let res;
+      if (editingExpId) {
+        res = await fetch(`${API_BASE}/employee-experience/${editingExpId}`, { method: "PUT", headers: { "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify(payload) });
+        if (!res.ok) throw new Error(await readError(res));
+        setMessage("Experience updated");
+      } else {
+        res = await fetch(`${API_BASE}/employee-experience`, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify(payload) });
+        if (!res.ok) throw new Error(await readError(res));
+        setMessage("Experience added");
+      }
+      await loadRelatedForUser(target);
+      startAddExp();
+      setTimeout(() => setMessage(""), 3000);
+    } catch (err) {
+      console.error("handleSaveExperience", err);
+      setMessage("Saving experience failed: " + (err.message || err));
+      setTimeout(() => setMessage(""), 4000);
+    } finally {
+      setSavingExp(false);
+    }
+  }
+
+  async function handleDeleteExperience(id) {
+    if (!window.confirm("Delete this experience record?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/employee-experience/${id}`, { method: "DELETE", headers: { "Accept": "application/json" } });
+      if (!res.ok) throw new Error(await readError(res));
+      setExperienceList(prev => prev.filter(x => String(x.id) !== String(id)));
+      setMessage("Experience deleted");
+      const target = getTargetId();
+      if (target) await loadRelatedForUser(target);
+      setTimeout(() => setMessage(""), 2500);
+    } catch (err) {
+      console.error("handleDeleteExperience", err);
+      setMessage("Delete failed: " + (err.message || err));
+      setTimeout(() => setMessage(""), 3000);
+    }
+  }
+
+  // -----------------------
+  // Biography CRUD
+  // -----------------------
+  function startAddBio() {
+    setBioForm({ id: null, bio_text: "" });
+    setEditingBioId(null);
+  }
+  function startEditBio(bio) {
+    setBioForm({ id: bio.id, bio_text: bio.bio_text || bio.text || bio.description || "" });
+    setEditingBioId(bio.id);
+    setActiveTab("biography");
+  }
+
+  async function handleSaveBiography(e) {
+    e.preventDefault();
+    if (savingBio) return;
+    setSavingBio(true);
+    const target = getTargetId();
+    if (!target) {
+      setMessage("Select or save an employee first");
+      setSavingBio(false);
+      setTimeout(() => setMessage(""), 2500);
+      return;
+    }
+
+    const payload = { user_id: target, bio_text: bioForm.bio_text };
+
+    try {
+      let res;
+      if (editingBioId) {
+        res = await fetch(`${API_BASE}/employee-biography/${editingBioId}`, { method: "PUT", headers: { "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify(payload) });
+        if (!res.ok) throw new Error(await readError(res));
+        setMessage("Biography updated");
+      } else {
+        res = await fetch(`${API_BASE}/employee-biography`, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" }, body: JSON.stringify(payload) });
+        if (!res.ok) throw new Error(await readError(res));
+        setMessage("Biography added");
+      }
+      await loadRelatedForUser(target);
+      startAddBio();
+      setTimeout(() => setMessage(""), 3000);
+    } catch (err) {
+      console.error("handleSaveBiography", err);
+      setMessage("Saving biography failed: " + (err.message || err));
+      setTimeout(() => setMessage(""), 4000);
+    } finally {
+      setSavingBio(false);
+    }
+  }
+
+  async function handleDeleteBiography(id) {
+    if (!window.confirm("Delete this biography?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/employee-biography/${id}`, { method: "DELETE", headers: { "Accept": "application/json" } });
+      if (!res.ok) throw new Error(await readError(res));
+      setBiographyList(prev => prev.filter(x => String(x.id) !== String(id)));
+      setMessage("Biography deleted");
+      const target = getTargetId();
+      if (target) await loadRelatedForUser(target);
+      setTimeout(() => setMessage(""), 2500);
+    } catch (err) {
+      console.error("handleDeleteBiography", err);
+      setMessage("Delete failed: " + (err.message || err));
+      setTimeout(() => setMessage(""), 3000);
+    }
+  }
+
+  // -----------------------
+  // Documents: upload, delete, preview
+  // -----------------------
+  function onFileChange(e) {
     const f = e.target.files?.[0] || null;
     setFile(f);
     if (f && f.type?.startsWith("image/")) {
@@ -227,145 +511,110 @@ export default function HrPortal() {
     } else {
       if (filePreviewUrl) { URL.revokeObjectURL(filePreviewUrl); setFilePreviewUrl(null); }
     }
-  };
+  }
 
-  const handleSaveDocument = async (e) => {
+  async function handleUploadDocument(e) {
     e.preventDefault();
+    if (uploadingDocument) return;
+    setUploadingDocument(true);
+    const target = getTargetId();
+    if (!target) {
+      setMessage("Select or save an employee first");
+      setUploadingDocument(false);
+      setTimeout(() => setMessage(""), 2500);
+      return;
+    }
     if (!file) {
       setMessage("Choose a file");
-      setTimeout(() => setMessage(""), 2500);
+      setUploadingDocument(false);
+      setTimeout(() => setMessage(""), 2000);
       return;
     }
-    if (!editingId) {
-      setMessage("Save or select an employee to attach document");
-      setTimeout(() => setMessage(""), 2500);
-      return;
-    }
+
     const fd = new FormData();
-    fd.append("user_id", editingId);
+    fd.append("user_id", target);
     fd.append("document_type", docType || file.name);
     fd.append("file", file);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/employee-documents", { method: "POST", body: fd });
-      if (!res.ok) throw new Error("Upload failed");
-      const saved = await res.json();
-      setDocuments(prev => [saved, ...prev]);
-      setMessage("Document uploaded (not auto-opened)");
-      // reset
+      const res = await fetch(`${API_BASE}/employee-documents`, { method: "POST", body: fd });
+      if (!res.ok) throw new Error(await readError(res));
+      await loadRelatedForUser(target);
       setDocType("");
       setFile(null);
-      if (filePreviewUrl) { URL.revokeObjectURL(filePreviewUrl); setFilePreviewUrl(null); }
       if (fileInputRef.current) fileInputRef.current.value = "";
-      setTimeout(() => setMessage(""), 3000);
+      if (filePreviewUrl) { URL.revokeObjectURL(filePreviewUrl); setFilePreviewUrl(null); }
+      setMessage("Document uploaded");
+      setTimeout(() => setMessage(""), 2500);
     } catch (err) {
-      console.error(err);
-      setMessage("Upload failed");
+      console.error("handleUploadDocument", err);
+      setMessage("Upload failed: " + (err.message || err));
+      setTimeout(() => setMessage(""), 4000);
+    } finally {
+      setUploadingDocument(false);
+    }
+  }
+
+  async function handleDeleteDocument(id) {
+    if (!window.confirm("Delete this document?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/employee-documents/${id}`, { method: "DELETE", headers: { "Accept": "application/json" } });
+      if (!res.ok) throw new Error(await readError(res));
+      setDocuments(prev => prev.filter(d => String(d.id) !== String(id)));
+      setMessage("Document deleted");
+      const target = getTargetId();
+      if (target) await loadRelatedForUser(target);
+      setTimeout(() => setMessage(""), 2500);
+    } catch (err) {
+      console.error("handleDeleteDocument", err);
+      setMessage("Delete failed: " + (err.message || err));
       setTimeout(() => setMessage(""), 3000);
     }
-  };
+  }
 
-  const handlePreview = (doc) => {
-    setPreviewDoc(doc);
-    setPreviewOpen(true);
-  };
+  function handlePreview(doc) {
+    const url = doc.url || doc.path || doc.download_url || doc.file_url || doc.file || null;
+    if (!url) return alert("No preview URL");
+    window.open(url, "_blank");
+  }
 
-  const handleDownload = (doc) => {
+  function handleDownload(doc) {
+    const url = doc.url || doc.path || doc.download_url || doc.file_url || doc.file;
+    if (!url) return alert("No file URL available");
     const a = document.createElement("a");
-    a.href = doc.url || doc.path || doc.download_url;
-    a.download = doc.name || doc.filename || "";
+    a.href = url;
+    a.download = doc.name || doc.filename || doc.file_name || "";
     document.body.appendChild(a);
     a.click();
     a.remove();
-  };
+  }
 
-  const handleDeleteDocument = async (id) => {
-    if (!window.confirm("Delete this document?")) return;
-    try {
-      const res = await fetch(`http://127.0.0.1:8000/api/employee-documents/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Delete failed");
-      setDocuments(prev => prev.filter(d => d.id !== id));
-      setMessage("Document deleted");
-      setTimeout(() => setMessage(""), 2500);
-    } catch (err) {
-      console.error(err);
-      setMessage("Delete failed");
-      setTimeout(() => setMessage(""), 2500);
-    }
-  };
-
-  // Education/Experience/Bio handlers (light)
-  const handleSaveEducation = async (e) => {
-    e.preventDefault();
-    if (!editingId) {
-      setMessage("Select or save an employee first");
-      setTimeout(() => setMessage(""), 2500);
-      return;
-    }
-    const payload = { user_id: editingId, level, field, institution, start_date: eduStart, end_date: eduEnd, notes: eduNotes };
-    try {
-      const res = await fetch("http://127.0.0.1:8000/api/employee-education", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error("Save failed");
-      setMessage("Education saved");
-      setLevel(""); setField(""); setInstitution(""); setEduStart(""); setEduEnd(""); setEduNotes("");
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to save education");
-    } finally { setTimeout(() => setMessage(""), 2500); }
-  };
-
-  const handleSaveExperience = async (e) => {
-    e.preventDefault();
-    if (!editingId) {
-      setMessage("Select or save an employee first");
-      setTimeout(() => setMessage(""), 2500);
-      return;
-    }
-    const payload = { user_id: editingId, company, role, start_date: expStart, end_date: expEnd, responsibilities };
-    try {
-      const res = await fetch("http://127.0.0.1:8000/api/employee-experience", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error("Save failed");
-      setMessage("Experience saved");
-      setCompany(""); setRole(""); setExpStart(""); setExpEnd(""); setResponsibilities("");
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to save experience");
-    } finally { setTimeout(() => setMessage(""), 2500); }
-  };
-
-  const handleSaveBiography = async (e) => {
-    e.preventDefault();
-    if (!editingId) {
-      setMessage("Select or save an employee first");
-      setTimeout(() => setMessage(""), 2500);
-      return;
-    }
-    const payload = { user_id: editingId, bio_text: bioText };
-    try {
-      const res = await fetch("http://127.0.0.1:8000/api/employee-biography", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error("Save failed");
-      setMessage("Biography saved");
-      setBioText("");
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to save biography");
-    } finally { setTimeout(() => setMessage(""), 2500); }
-  };
-
-  // Helpers
+  // Helper date formatting
   const formatDate = (iso) => {
     if (!iso) return "";
     try { return new Date(iso).toLocaleDateString(); } catch { return iso; }
   };
 
-  // Documents filtered to selected employee if present
-  const shownDocuments = editingId ? documents.filter(d => String(d.user_id) === String(editingId) || String(d.employee_id) === String(editingId)) : documents;
+  // shownDocuments filtered by selected employee
+  const shownDocuments = (() => {
+    const target = getTargetId();
+    if (!target) return documents;
+    return documents.filter(d => String(d.user_id) === String(target) || String(d.employee_id) === String(target));
+  })();
+
+  // Helper to reset employee form
+  function resetEmployeeForm() {
+    setEditingEmployeeId(null);
+    setSelectedEmployee(null);
+    setFullName("");
+    setEmail("");
+    setDepartment("");
+    setPosition("");
+    setSalary("");
+    setHireDate("");
+    setStatus("active");
+    setPassword("");
+  }
 
   return (
     <div className="hp-app">
@@ -375,15 +624,77 @@ export default function HrPortal() {
           <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search employees..." />
         </div>
         <div className="hp-actions">
-          <button className="btn-ghost" onClick={() => { setSelectedEmployee(null); setEditingId(null); }}>Clear Profile</button>
+          <button className="btn-ghost" onClick={() => { resetEmployeeForm(); setActiveTab("overview"); }}>Clear Profile</button>
         </div>
       </header>
 
       <main className="hp-container">
-        {/* MESSAGE */}
         {message && <div className="hp-toast">{message}</div>}
 
-        {/* Top: if a profile is selected show two-column profile layout */}
+        {/* EMPLOYEE LIST (moved above) */}
+        <section className="card list-card">
+          <div className="list-header">
+            <h3>Employee Directory</h3>
+            <div>
+              <button className="btn-primary" onClick={() => { resetEmployeeForm(); setActiveTab("overview"); }}>Add Employee</button>
+            </div>
+          </div>
+
+          <div className="filters-row">
+            <div className="filter-chip">All departments</div>
+            <div className="filter-chip">Active</div>
+            <div className="filter-chip">Inactive</div>
+            <div style={{ marginLeft: "auto" }}>Showing {filteredEmployees.length} employees</div>
+          </div>
+
+          <div className="table-wrap">
+            <table className="employee-table">
+              <thead>
+                <tr><th>Name</th><th>Email</th><th>Department</th><th>Position</th><th>Salary</th><th>Status</th><th>Actions</th></tr>
+              </thead>
+              <tbody>
+                {paginatedEmployees.map(emp => (
+                  <tr key={emp.id || emp.user_id}>
+                    <td className="name-cell" onClick={() => openProfile(emp)}>
+                      <div className="row-avatar">{(emp.full_name || emp.name || "").split(" ").map(n => n[0]).slice(0,2).join("").toUpperCase()}</div>
+                      <div>
+                        <div className="emp-name">{(emp.full_name || emp.name || "").toUpperCase()}</div>
+                        <div className="muted-small">{(emp.user && emp.user.email) || emp.email}</div>
+                      </div>
+                    </td>
+                    <td>{(emp.user && emp.user.email) || emp.email}</td>
+                    <td>{emp.department}</td>
+                    <td>{emp.position}</td>
+                    <td>{emp.salary}</td>
+                    <td><span className={`badge ${emp.status === "active" ? "green" : "muted"}`}>{emp.status}</span></td>
+                    <td className="actions-col">
+                      <button className="btn-ghost" onClick={() => openProfile(emp)}>View</button>
+                      <button className="btn-ghost" onClick={() => { setEditingEmployeeId(emp.id || emp.user_id); openProfile(emp); }}>Edit</button>
+                      <button className="btn-danger" onClick={() => handleDeleteEmployee(emp)}>Delete</button>
+                    </td>
+                  </tr>
+                ))}
+                {paginatedEmployees.length === 0 && (
+                  <tr><td colSpan="7" className="muted">No employees found</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="pagination">
+            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Prev</button>
+            <span>Page {currentPage}</span>
+            <button onClick={() => setCurrentPage(p => p + 1)} disabled={(currentPage * pageSize) >= filteredEmployees.length}>Next</button>
+            <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}>
+              <option value={1}>Show 1</option>
+              <option value={5}>Show 5</option>
+              <option value={10}>Show 10</option>
+              <option value={filteredEmployees.length}>Show All</option>
+            </select>
+          </div>
+        </section>
+
+        {/* PROFILE AND FORM BELOW */}
         <section className="hp-profile-section">
           <div className="hp-left-col card">
             {selectedEmployee ? (
@@ -391,7 +702,7 @@ export default function HrPortal() {
                 <div className="profile-head">
                   <div className="avatar">{(selectedEmployee.full_name || selectedEmployee.name || "").split(" ").map(n => n[0]).slice(0,2).join("").toUpperCase()}</div>
                   <div>
-                    <h2 className="name">{selectedEmployee.full_name || selectedEmployee.name}</h2>
+                    <h2 className="name">{(selectedEmployee.full_name || selectedEmployee.name || "").toUpperCase()}</h2>
                     <div className="muted">{selectedEmployee.position || "-"} • {selectedEmployee.department || "-"}</div>
                     <div className={`status ${selectedEmployee.status === "active" ? "active" : "inactive"}`}>{selectedEmployee.status || "-"}</div>
                   </div>
@@ -415,16 +726,16 @@ export default function HrPortal() {
             ) : (
               <div className="empty-profile">
                 <h3>No profile selected</h3>
-                <p>Select an employee from the list below to view profile and details; or fill the form to add a new employee and then add Education/Experience/Documents/Bio.</p>
+                <p>Select an employee from the list above to view profile and details; or fill the form to add a new employee and then add Education/Experience/Documents/Bio.</p>
               </div>
             )}
           </div>
 
+          {/* RIGHT COLUMN: employee form + tabs */}
           <div className="hp-right-col">
-            {/* Right column: new/edit employee form */}
             <div className="card">
               <div className="card-header">
-                <h3>{editingId ? (selectedEmployee ? "Edit Employee" : "Editing") : "Add New Employee"}</h3>
+                <h3>{editingEmployeeId ? (selectedEmployee ? "Edit Employee" : "Editing") : "Add New Employee"}</h3>
               </div>
 
               <form className="grid-2" onSubmit={handleSaveEmployee}>
@@ -437,20 +748,20 @@ export default function HrPortal() {
                   <input type="email" value={email} onChange={e => setEmail(e.target.value)} required />
                 </div>
                 <div>
-                  <label>Password {editingId ? <span className="muted-small">(leave blank to keep)</span> : null}</label>
-                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} required={!editingId} />
+                  <label>Password {editingEmployeeId ? <span className="muted-small">(leave blank to keep)</span> : null}</label>
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} required={!editingEmployeeId} />
                 </div>
                 <div>
                   <label>Department</label>
-                  <input type="text" value={department} onChange={e => setDepartment(e.target.value)} required />
+                  <input type="text" value={department} onChange={e => setDepartment(e.target.value)} />
                 </div>
                 <div>
                   <label>Position</label>
-                  <input type="text" value={position} onChange={e => setPosition(e.target.value)} required />
+                  <input type="text" value={position} onChange={e => setPosition(e.target.value)} />
                 </div>
                 <div>
                   <label>Salary</label>
-                  <input type="number" value={salary} onChange={e => setSalary(e.target.value)} required />
+                  <input type="number" value={salary} onChange={e => setSalary(e.target.value)} />
                 </div>
                 <div>
                   <label>Hire Date</label>
@@ -465,13 +776,13 @@ export default function HrPortal() {
                 </div>
 
                 <div className="form-actions" style={{ gridColumn: "1/-1", justifySelf: "end" }}>
-                  <button type="submit" className="btn-primary">{editingId ? "Update Employee" : "Add Employee"}</button>
-                  {editingId && <button type="button" className="btn-ghost" onClick={() => { setEditingId(null); setSelectedEmployee(null); }}>Cancel</button>}
+                  <button type="submit" className="btn-primary" disabled={savingEmployee}>{savingEmployee ? "Saving..." : (editingEmployeeId ? "Update Employee" : "Add Employee")}</button>
+                  {editingEmployeeId && <button type="button" className="btn-ghost" onClick={() => { resetEmployeeForm(); }}>Cancel</button>}
                 </div>
               </form>
             </div>
 
-            {/* Tabs area */}
+            {/* Tabs */}
             <div className="card tabs-card">
               <div className="tabs">
                 <button className={activeTab === "overview" ? "active" : ""} onClick={() => setActiveTab("overview")}>Overview</button>
@@ -503,11 +814,11 @@ export default function HrPortal() {
 
                 {activeTab === "documents" && (
                   <>
-                    <form className="doc-upload" onSubmit={handleSaveDocument}>
+                    <form className="doc-upload" onSubmit={handleUploadDocument}>
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <input type="text" placeholder="Document Type" value={docType} onChange={e => setDocType(e.target.value)} />
                         <input ref={fileInputRef} type="file" onChange={onFileChange} />
-                        <button className="btn-primary" type="submit">Upload</button>
+                        <button className="btn-primary" type="submit" disabled={uploadingDocument}>{uploadingDocument ? "Uploading..." : "Upload"}</button>
                       </div>
                       {filePreviewUrl && <div className="file-preview"><img src={filePreviewUrl} alt="preview" /></div>}
                     </form>
@@ -526,7 +837,7 @@ export default function HrPortal() {
                               <td>{d.name || d.filename || d.file_name || "-"}</td>
                               <td>{d.uploaded_at ? new Date(d.uploaded_at).toLocaleString() : d.created_at ? new Date(d.created_at).toLocaleString() : "-"}</td>
                               <td className="actions-col">
-                                <button onClick={() => { handlePreview(d); }} className="btn-ghost">Preview</button>
+                                <button onClick={() => handlePreview(d)} className="btn-ghost">Preview</button>
                                 <button onClick={() => handleDownload(d)} className="btn-ghost">Download</button>
                                 <button onClick={() => handleDeleteDocument(d.id)} className="btn-danger">Delete</button>
                               </td>
@@ -541,27 +852,75 @@ export default function HrPortal() {
                 {activeTab === "education" && (
                   <>
                     <form onSubmit={handleSaveEducation} className="grid-2">
-                      <div><label>Level</label><input value={level} onChange={e => setLevel(e.target.value)} /></div>
-                      <div><label>Field</label><input value={field} onChange={e => setField(e.target.value)} /></div>
-                      <div><label>Institution</label><input value={institution} onChange={e => setInstitution(e.target.value)} /></div>
-                      <div><label>Start</label><input type="date" value={eduStart} onChange={e => setEduStart(e.target.value)} /></div>
-                      <div><label>End</label><input type="date" value={eduEnd} onChange={e => setEduEnd(e.target.value)} /></div>
-                      <div style={{ gridColumn: "1/-1" }}><label>Notes</label><textarea value={eduNotes} onChange={e => setEduNotes(e.target.value)} /></div>
-                      <div style={{ gridColumn: "1/-1", textAlign: "right" }}><button className="btn-primary" type="submit">Add Education</button></div>
+                      <div><label>Level</label><input value={eduForm.level} onChange={e => setEduForm(f => ({ ...f, level: e.target.value }))} required /></div>
+                      <div><label>Field</label><input value={eduForm.field} onChange={e => setEduForm(f => ({ ...f, field: e.target.value }))} /></div>
+                      <div><label>Institution</label><input value={eduForm.institution} onChange={e => setEduForm(f => ({ ...f, institution: e.target.value }))} /></div>
+                      <div><label>Start</label><input type="date" value={eduForm.start_date} onChange={e => setEduForm(f => ({ ...f, start_date: e.target.value }))} /></div>
+                      <div><label>End</label><input type="date" value={eduForm.end_date} onChange={e => setEduForm(f => ({ ...f, end_date: e.target.value }))} /></div>
+                      <div style={{ gridColumn: "1/-1" }}><label>Notes</label><textarea value={eduForm.notes} onChange={e => setEduForm(f => ({ ...f, notes: e.target.value }))} /></div>
+
+                      <div style={{ gridColumn: "1/-1", textAlign: "right" }}>
+                        <button className="btn-primary" type="submit" disabled={savingEdu}>{savingEdu ? "Saving..." : (editingEduId ? "Update Education" : "Add Education")}</button>
+                        <button type="button" className="btn-ghost" onClick={startAddEdu}>Reset</button>
+                      </div>
                     </form>
+
+                    <div className="list-section">
+                      <h4>Education</h4>
+                      {educationList.length === 0 ? <p className="muted">No education records</p> : (
+                        <ul>
+                          {educationList.map(ed => (
+                            <li key={ed.id}>
+                              <div className="line">
+                                <div>{ed.level} — {ed.field} at {ed.institution} ({formatDate(ed.start_date)} - {formatDate(ed.end_date)})</div>
+                                <div>
+                                  <button className="btn-ghost" onClick={() => startEditEdu(ed)}>Edit</button>
+                                  <button className="btn-danger" onClick={() => handleDeleteEducation(ed.id)}>Delete</button>
+                                </div>
+                              </div>
+                              {ed.notes && <div className="muted-small">{ed.notes}</div>}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   </>
                 )}
 
                 {activeTab === "experience" && (
                   <>
                     <form onSubmit={handleSaveExperience} className="grid-2">
-                      <div><label>Company</label><input value={company} onChange={e => setCompany(e.target.value)} /></div>
-                      <div><label>Role</label><input value={role} onChange={e => setRole(e.target.value)} /></div>
-                      <div><label>Start</label><input type="date" value={expStart} onChange={e => setExpStart(e.target.value)} /></div>
-                      <div><label>End</label><input type="date" value={expEnd} onChange={e => setExpEnd(e.target.value)} /></div>
-                      <div style={{ gridColumn: "1/-1" }}><label>Responsibilities</label><textarea value={responsibilities} onChange={e => setResponsibilities(e.target.value)} /></div>
-                      <div style={{ gridColumn: "1/-1", textAlign: "right" }}><button className="btn-primary" type="submit">Add Experience</button></div>
+                      <div><label>Company</label><input value={expForm.company} onChange={e => setExpForm(f => ({ ...f, company: e.target.value }))} required /></div>
+                      <div><label>Role</label><input value={expForm.role} onChange={e => setExpForm(f => ({ ...f, role: e.target.value }))} /></div>
+                      <div><label>Start</label><input type="date" value={expForm.start_date} onChange={e => setExpForm(f => ({ ...f, start_date: e.target.value }))} /></div>
+                      <div><label>End</label><input type="date" value={expForm.end_date} onChange={e => setExpForm(f => ({ ...f, end_date: e.target.value }))} /></div>
+                      <div style={{ gridColumn: "1/-1" }}><label>Responsibilities</label><textarea value={expForm.responsibilities} onChange={e => setExpForm(f => ({ ...f, responsibilities: e.target.value }))} /></div>
+
+                      <div style={{ gridColumn: "1/-1", textAlign: "right" }}>
+                        <button className="btn-primary" type="submit" disabled={savingExp}>{savingExp ? "Saving..." : (editingExpId ? "Update Experience" : "Add Experience")}</button>
+                        <button type="button" className="btn-ghost" onClick={startAddExp}>Reset</button>
+                      </div>
                     </form>
+
+                    <div className="list-section">
+                      <h4>Experience</h4>
+                      {experienceList.length === 0 ? <p className="muted">No experience records</p> : (
+                        <ul>
+                          {experienceList.map(ex => (
+                            <li key={ex.id}>
+                              <div className="line">
+                                <div>{ex.role} at {ex.company} ({formatDate(ex.start_date)} - {formatDate(ex.end_date)})</div>
+                                <div>
+                                  <button className="btn-ghost" onClick={() => startEditExp(ex)}>Edit</button>
+                                  <button className="btn-danger" onClick={() => handleDeleteExperience(ex.id)}>Delete</button>
+                                </div>
+                              </div>
+                              {ex.responsibilities && <div className="muted-small">{ex.responsibilities}</div>}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   </>
                 )}
 
@@ -569,99 +928,37 @@ export default function HrPortal() {
                   <>
                     <form onSubmit={handleSaveBiography}>
                       <label>Biography</label>
-                      <textarea value={bioText} onChange={e => setBioText(e.target.value)} />
-                      <div style={{ textAlign: "right" }}><button className="btn-primary" type="submit">Save Biography</button></div>
+                      <textarea value={bioForm.bio_text} onChange={e => setBioForm(f => ({ ...f, bio_text: e.target.value }))} required />
+                      <div style={{ textAlign: "right", marginTop: 8 }}>
+                        <button className="btn-primary" type="submit" disabled={savingBio}>{savingBio ? "Saving..." : (editingBioId ? "Update Biography" : "Add Biography")}</button>
+                        <button type="button" className="btn-ghost" onClick={startAddBio}>Reset</button>
+                      </div>
                     </form>
+
+                    <div className="list-section">
+                      <h4>Biography</h4>
+                      {biographyList.length === 0 ? <p className="muted">No biography</p> : (
+                        biographyList.map(b => (
+                          <div key={b.id} className="bio-item">
+                            <div className="line">
+                              <div><p>{b.bio_text || b.text || b.description}</p></div>
+                              <div>
+                                <button className="btn-ghost" onClick={() => startEditBio(b)}>Edit</button>
+                                <button className="btn-danger" onClick={() => handleDeleteBiography(b.id)}>Delete</button>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </>
                 )}
-
               </div>
             </div>
           </div>
         </section>
 
-        {/* Employee list */}
-        <section className="card list-card">
-          <div className="list-header">
-            <h3>Employee Directory</h3>
-            <div>
-              <button className="btn-primary" onClick={() => { setSelectedEmployee(null); setEditingId(null); }}>Add Employee</button>
-            </div>
-          </div>
-
-          <div className="filters-row">
-            <div className="filter-chip">All departments</div>
-            <div className="filter-chip">Active</div>
-            <div className="filter-chip">Inactive</div>
-            <div style={{ marginLeft: "auto" }}>Showing {filteredEmployees.length} employees</div>
-          </div>
-
-          <table className="employee-table">
-            <thead>
-              <tr><th>Name</th><th>Email</th><th>Department</th><th>Position</th><th>Salary</th><th>Status</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-              {paginatedEmployees.map(emp => (
-                <tr key={emp.id || emp.user_id}>
-                  <td className="name-cell" onClick={() => openProfile(emp)}>
-                    <div className="row-avatar">{(emp.full_name || emp.name || "").split(" ").map(n => n[0]).slice(0,2).join("").toUpperCase()}</div>
-                    <div>
-                      <div className="emp-name">{emp.full_name || emp.name}</div>
-                      <div className="muted-small">{(emp.user && emp.user.email) || emp.email}</div>
-                    </div>
-                  </td>
-                  <td>{(emp.user && emp.user.email) || emp.email}</td>
-                  <td>{emp.department}</td>
-                  <td>{emp.position}</td>
-                  <td>{emp.salary}</td>
-                  <td><span className={`badge ${emp.status === "active" ? "green" : "muted"}`}>{emp.status}</span></td>
-                  <td className="actions-col">
-                    <button className="btn-ghost" onClick={() => openProfile(emp)}>View</button>
-                    <button className="btn-ghost" onClick={() => { setEditingId(emp.id || emp.user_id); openProfile(emp); }}>Edit</button>
-                    <button className="btn-danger" onClick={() => handleDeleteEmployee(emp.id || emp.user_id)}>Delete</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div className="pagination">
-            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>Prev</button>
-            <span>Page {currentPage}</span>
-            <button onClick={() => setCurrentPage(p => p + 1)} disabled={(currentPage * pageSize) >= filteredEmployees.length}>Next</button>
-            <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
-              <option value={1}>Show 1</option>
-              <option value={5}>Show 5</option>
-              <option value={10}>Show 10</option>
-              <option value={filteredEmployees.length}>Show All</option>
-            </select>
-          </div>
-        </section>
       </main>
-
-      {/* Preview modal */}
-      {previewOpen && previewDoc && (
-        <div className="modal-overlay" onClick={() => setPreviewOpen(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <strong>{previewDoc.name || previewDoc.filename}</strong>
-              <div>
-                <button className="btn-ghost" onClick={() => handleDownload(previewDoc)}>Download</button>
-                <button className="btn-ghost" onClick={() => setPreviewOpen(false)}>Close</button>
-              </div>
-            </div>
-            <div className="modal-body">
-              {previewDoc.type?.startsWith("image/") ? (
-                <img src={previewDoc.url} alt={previewDoc.name} style={{ maxWidth: "100%" }} />
-              ) : previewDoc.type === "application/pdf" || previewDoc.name?.toLowerCase().endsWith(".pdf") ? (
-                <iframe title="pdf" src={previewDoc.url} style={{ width: "100%", height: "70vh", border: "none" }} />
-              ) : (
-                <p>No inline preview available. Use Download.</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

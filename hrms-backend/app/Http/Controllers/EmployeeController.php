@@ -53,12 +53,11 @@ class EmployeeController extends Controller
     // Create new employee (user + profile)
     public function store(Request $request)
     {
-        // Validate user fields
+        // Validate user fields (role removed)
         $validatedUser = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
-            'role' => 'required|string'
         ]);
 
         // Validate profile fields
@@ -74,12 +73,12 @@ class EmployeeController extends Controller
             'date_of_birth' => 'nullable|date',
         ]);
 
-        // Create user
+        // Create user with default role
         $user = User::create([
             'name' => $validatedUser['name'],
             'email' => $validatedUser['email'],
             'password' => Hash::make($validatedUser['password']),
-            'role' => $validatedUser['role'],
+            'role' => 'employee', // ✅ default role set here
         ]);
 
         // Create employee profile linked to user
@@ -104,7 +103,7 @@ class EmployeeController extends Controller
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:6',
-            'role' => 'sometimes|string'
+            // ❌ role removed from update validation
         ]);
 
         $validatedProfile = $request->validate([
@@ -119,11 +118,10 @@ class EmployeeController extends Controller
             'date_of_birth' => 'nullable|date',
         ]);
 
-        // Update user
+        // Update user (role not touched here)
         $user->update([
             'name' => $validatedUser['name'] ?? $user->name,
             'email' => $validatedUser['email'] ?? $user->email,
-            'role' => $validatedUser['role'] ?? $user->role,
             'password' => !empty($validatedUser['password'])
                 ? Hash::make($validatedUser['password'])
                 : $user->password,

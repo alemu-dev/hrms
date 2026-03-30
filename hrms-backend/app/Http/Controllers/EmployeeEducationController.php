@@ -36,4 +36,37 @@ class EmployeeEducationController extends Controller
     {
         return EmployeeEducation::where('user_id', $userId)->get();
     }
+
+    // ✅ Update an education record
+    public function update(Request $request, $id)
+    {
+        $education = EmployeeEducation::findOrFail($id);
+
+        $validated = $request->validate([
+            'level' => 'nullable|string',
+            'field' => 'nullable|string',
+            'institution' => 'nullable|string',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date',
+            'notes' => 'nullable|string',
+        ]);
+
+        $education->update($validated);
+
+        return response()->json([
+            'message' => 'Education record updated successfully',
+            'data' => $education
+        ]);
+    }
+
+    // ✅ Delete an education record
+    public function destroy($id)
+    {
+        $education = EmployeeEducation::findOrFail($id);
+        $education->delete();
+
+        return response()->json([
+            'message' => 'Education record deleted successfully'
+        ]);
+    }
 }
