@@ -14,6 +14,7 @@ class EmployeeProfile extends Model
         'full_name',
         'department',
         'position',
+        'gender' ,
         'salary',
         'hire_date',
         'status',

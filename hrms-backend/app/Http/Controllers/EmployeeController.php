@@ -6,10 +6,58 @@ use App\Models\User;
 use App\Models\EmployeeProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class EmployeeController extends Controller
 {
-    // List all employees with full user + related data
+    /**
+     * Get Stats for the Director Dashboard
+     */
+    public function getStats() 
+    {
+        // 1. Group by Education Level
+        $education = DB::table('employee_education')
+            ->select(DB::raw('UPPER(level) as name'), DB::raw('count(*) as value'))
+            ->whereNotNull('level')
+            ->where('level', '!=', '')
+            ->groupBy(DB::raw('UPPER(level)'))
+            ->get();
+
+        // 2. Group by Department
+        $departments = DB::table('employee_profiles')
+            ->select('department as name', DB::raw('count(*) as value'))
+            ->whereNotNull('department')
+            ->where('department', '!=', '')
+            ->groupBy('department')
+            ->get();
+
+        // 3. Group by Gender (Updated to ensure clean names)
+        $gender = DB::table('employee_profiles')
+            ->select('gender as name', DB::raw('count(*) as value'))
+            ->whereNotNull('gender')
+            ->where('gender', '!=', '')
+            ->groupBy('gender')
+            ->get();
+
+        // 4. Summary Statistics
+        $totalEmployees = DB::table('employee_profiles')->count();
+        $totalSalary = DB::table('employee_profiles')->sum('salary');
+        $avgSalary = DB::table('employee_profiles')->avg('salary');
+
+        return response()->json([
+            'education' => $education,
+            'departments' => $departments,
+            'gender' => $gender,
+            'summary' => [
+                'total_staff' => $totalEmployees,
+                'total_budget' => round($totalSalary, 2),
+                'avg_salary' => round($avgSalary, 2),
+                'active_depts' => $departments->count()
+            ]
+        ]);
+    }
+
+    // List all employees
     public function index()
     {
         return response()->json(
@@ -22,7 +70,7 @@ class EmployeeController extends Controller
         );
     }
 
-    // Show single employee by profile ID
+    // Show single employee
     public function show($id)
     {
         $employee = EmployeeProfile::with([
@@ -35,7 +83,7 @@ class EmployeeController extends Controller
         return response()->json($employee);
     }
 
-    // Show employee profile by user_id (for EmployeeWorkspace)
+    // Show employee profile by user_id
     public function showByUser($userId)
     {
         $employee = EmployeeProfile::with([
@@ -50,22 +98,21 @@ class EmployeeController extends Controller
         return response()->json($employee);
     }
 
-    // Create new employee (user + profile)
+    // Create new employee
     public function store(Request $request)
     {
-        // Validate user fields (role removed)
         $validatedUser = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
         ]);
 
-        // Validate profile fields
         $validatedProfile = $request->validate([
             'full_name' => 'required|string|max:255',
             'department' => 'required|string|max:255',
             'position' => 'required|string|max:255',
             'salary' => 'required|numeric',
+            'gender' => 'required|string', // ✅ Handled
             'hire_date' => 'nullable|date',
             'status' => 'required|string',
             'phone_number' => 'nullable|string',
@@ -73,27 +120,40 @@ class EmployeeController extends Controller
             'date_of_birth' => 'nullable|date',
         ]);
 
-        // Create user with default role
-        $user = User::create([
-            'name' => $validatedUser['name'],
-            'email' => $validatedUser['email'],
-            'password' => Hash::make($validatedUser['password']),
-            'role' => 'employee', // ✅ default role set here
-        ]);
+        return DB::transaction(function () use ($validatedUser, $validatedProfile, $request) {
+            $user = User::create([
+                'name' => $validatedUser['name'],
+                'email' => $validatedUser['email'],
+                'password' => Hash::make($validatedUser['password']),
+                'role' => 'employee',
+            ]);
 
-        // Create employee profile linked to user
-        $employee = EmployeeProfile::create(array_merge($validatedProfile, [
-            'user_id' => $user->id,
-        ]));
+            $employee = EmployeeProfile::create(array_merge($validatedProfile, [
+                'user_id' => $user->id,
+            ]));
 
-        return response()->json([
-            'message' => 'Employee created successfully',
-            'user' => $user,
-            'employee' => $employee
-        ], 201);
+            if ($request->has('education')) {
+                $user->education()->createMany($request->education);
+            }
+            if ($request->has('experience')) {
+                $user->experience()->createMany($request->experience);
+            }
+            if ($request->has('biography')) {
+                $user->biography()->create(['bio_text' => $request->biography['bio_text'] ?? '']);
+            }
+            if ($request->has('documents')) {
+                $user->documents()->createMany($request->documents);
+            }
+
+            return response()->json([
+                'message' => 'Employee created successfully',
+                'user' => $user,
+                'employee' => $employee
+            ], 201);
+        });
     }
 
-    // Update employee (user + profile)
+    // Update employee
     public function update(Request $request, $id)
     {
         $employee = EmployeeProfile::findOrFail($id);
@@ -103,7 +163,6 @@ class EmployeeController extends Controller
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:6',
-            // ❌ role removed from update validation
         ]);
 
         $validatedProfile = $request->validate([
@@ -111,6 +170,7 @@ class EmployeeController extends Controller
             'department' => 'sometimes|string|max:255',
             'position' => 'sometimes|string|max:255',
             'salary' => 'sometimes|numeric',
+            'gender' => 'sometimes|string', // ✅ Handled
             'hire_date' => 'nullable|date',
             'status' => 'sometimes|string',
             'phone_number' => 'nullable|string',
@@ -118,26 +178,47 @@ class EmployeeController extends Controller
             'date_of_birth' => 'nullable|date',
         ]);
 
-        // Update user (role not touched here)
-        $user->update([
-            'name' => $validatedUser['name'] ?? $user->name,
-            'email' => $validatedUser['email'] ?? $user->email,
-            'password' => !empty($validatedUser['password'])
-                ? Hash::make($validatedUser['password'])
-                : $user->password,
-        ]);
+        return DB::transaction(function () use ($user, $employee, $validatedUser, $validatedProfile, $request) {
+            $user->update([
+                'name' => $validatedUser['name'] ?? $user->name,
+                'email' => $validatedUser['email'] ?? $user->email,
+                'password' => !empty($validatedUser['password'])
+                    ? Hash::make($validatedUser['password'])
+                    : $user->password,
+            ]);
 
-        // Update employee profile
-        $employee->update($validatedProfile);
+            $employee->update($validatedProfile);
 
-        return response()->json([
-            'message' => 'Employee updated successfully',
-            'user' => $user,
-            'employee' => $employee
-        ]);
+            if ($request->has('education')) {
+                $user->education()->delete();
+                $user->education()->createMany($request->education);
+            }
+
+            if ($request->has('experience')) {
+                $user->experience()->delete();
+                $user->experience()->createMany($request->experience);
+            }
+
+            if ($request->has('biography')) {
+                $user->biography()->updateOrCreate(
+                    ['user_id' => $user->id],
+                    ['bio_text' => $request->biography['bio_text'] ?? '']
+                );
+            }
+
+            if ($request->has('documents')) {
+                $user->documents()->delete();
+                $user->documents()->createMany($request->documents);
+            }
+
+            return response()->json([
+                'message' => 'Employee updated successfully',
+                'user' => $user,
+                'employee' => $employee
+            ]);
+        });
     }
 
-    // Delete employee (profile + user)
     public function destroy($id)
     {
         $employee = EmployeeProfile::findOrFail($id);

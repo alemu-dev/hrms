@@ -1,0 +1,249 @@
+/* ==========================================================================
+   1. GLOBAL VARIABLES & RESET (Refined Palette)
+   ========================================================================== */
+:root {
+  --sidebar-width: 280px; /* Slightly wider for breathing room */
+  --primary-dark: #0f172a;    
+  --sidebar-hover: #1e293b;   
+  --accent-blue: #2563eb;     /* Deeper, more professional blue */
+  --bg-body: #f8fafc;         /* Lighter, cleaner slate */
+  --text-main: #1e293b;       /* Darker for better readability */
+  --text-muted: #64748b;      
+  --white: #ffffff;
+  --border: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased; /* Smoother text rendering */
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg-body);
+  color: var(--text-main);
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   2. MAIN LAYOUT
+   ========================================================================== */
+.hp-dashboard-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.hp-sidebar {
+  width: var(--sidebar-width);
+  background-color: var(--primary-dark);
+  color: white;
+  position: fixed;
+  height: 100vh;
+  padding: 2rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.hp-main-content {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  padding: 2.5rem;
+  width: calc(100% - var(--sidebar-width));
+  max-width: 1400px; /* Prevent it from stretching too wide on ultra-wide monitors */
+}
+
+.hp-logo {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #f8fafc;
+  margin-bottom: 3rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hp-logo::before {
+  content: "";
+  width: 32px;
+  height: 32px;
+  background: var(--accent-blue);
+  border-radius: 8px;
+}
+
+/* ==========================================================================
+   3. SHARED COMPONENTS
+   ========================================================================== */
+.card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 1.75rem;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  margin-bottom: 1.5rem;
+  transition: box-shadow 0.3s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow);
+}
+
+/* Form Elements */
+input, select, textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  background-color: #fff;
+  color: var(--text-main);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+/* Modern Buttons */
+button { 
+  cursor: pointer; 
+  transition: all 0.2s ease; 
+  font-weight: 600; 
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: var(--accent-blue);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.btn-primary:hover { 
+  background: #1d4ed8; 
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.btn-secondary {
+  background: white;
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.btn-secondary:hover { 
+  background: #f8fafc; 
+  border-color: var(--border-hover);
+}
+
+/* ==========================================================================
+   4. COMPONENT SPECIFIC
+   ========================================================================== */
+
+/* Sidebar Navigation */
+.hp-sidebar nav button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.4rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  text-decoration: none;
+}
+
+.hp-sidebar nav button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #f8fafc;
+}
+
+.hp-sidebar nav button.active {
+  background: var(--accent-blue);
+  color: white;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+/* Table Refinement */
+.employee-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.employee-table th { 
+  background: #f8fafc;
+  color: var(--text-muted); 
+  font-weight: 600; 
+  text-transform: uppercase; 
+  font-size: 0.7rem; 
+  letter-spacing: 0.05em;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.employee-table td { padding: 1rem; border-bottom: 1px solid #f1f5f9; }
+
+.row-click { transition: background 0.2s ease; }
+.row-click:hover { background-color: #f8fafc !important; }
+
+/* Dynamic Status Pills */
+.status-pill { 
+  padding: 4px 12px; 
+  border-radius: 6px; /* Modern UI prefers "squircle" or small radius over pill shapes */
+  font-size: 0.75rem; 
+  font-weight: 700; 
+  text-transform: uppercase;
+}
+
+/* Tabs */
+.tab-buttons { gap: 1.5rem; margin-bottom: 2rem; }
+.tab-buttons button { 
+  padding: 0.5rem 0; 
+  font-size: 0.95rem; 
+  font-weight: 500;
+  color: var(--text-muted);
+  position: relative;
+}
+
+.tab-buttons button.active { 
+  color: var(--accent-blue); 
+  font-weight: 700;
+}
+
+.tab-buttons button.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--accent-blue);
+}
+
+/* ==========================================================================
+   5. UTILITIES
+   ========================================================================== */
+.hp-toast {
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}

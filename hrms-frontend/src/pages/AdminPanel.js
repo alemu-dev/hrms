@@ -3,9 +3,9 @@ import "./AdminPanel.css";
 
 export default function AdminPanel() {
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");   // use email instead of username
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("hr"); // default role
+  const [role, setRole] = useState("hr"); 
   const [department, setDepartment] = useState("");
   const [position, setPosition] = useState("");
   const [salary, setSalary] = useState("");
@@ -13,15 +13,24 @@ export default function AdminPanel() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const token = localStorage.getItem("auth_token"); // ✅ Retrieve admin token
+
+    if (!token) {
+      setMessage("❌ Unauthorized: No admin token found.");
+      return;
+    }
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/users", {
-
+      const response = await fetch("http://hrms-backend.test/api/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": `Bearer ${token}` // ✅ Added Authorization Header
+        },
         body: JSON.stringify({
           name,
-          email,        // send email instead of username
+          email,
           password,
           role,
           department,
@@ -31,22 +40,25 @@ export default function AdminPanel() {
       });
 
       const data = await response.json();
+
       if (response.ok) {
-        setMessage(data.message);
+        setMessage(`✅ Success: ${data.message || "Account created successfully"}`);
+        // Clear form only on success
+        setName("");
+        setEmail("");
+        setPassword("");
+        setRole("hr");
+        setDepartment("");
+        setPosition("");
+        setSalary("");
       } else {
-        setMessage("Error: " + (data.message || "Failed to create account"));
+        // Display specific validation errors if they exist
+        setMessage("❌ Error: " + (data.message || "Failed to create account"));
       }
 
-      // Clear form
-      setName("");
-      setEmail("");
-      setPassword("");
-      setRole("hr");
-      setDepartment("");
-      setPosition("");
-      setSalary("");
     } catch (error) {
-      setMessage("Error creating account. Please try again.");
+      console.error("Submission error:", error);
+      setMessage("❌ Connection error. Is the backend running?");
     }
   };
 
@@ -56,7 +68,7 @@ export default function AdminPanel() {
       <p>Create HR and Director Accounts</p>
 
       <form onSubmit={handleSubmit} className="admin-form">
-        <div>
+        <div className="form-group">
           <label>Name:</label>
           <input
             type="text"
@@ -66,7 +78,7 @@ export default function AdminPanel() {
           />
         </div>
 
-        <div>
+        <div className="form-group">
           <label>Email:</label>
           <input
             type="email"
@@ -76,17 +88,18 @@ export default function AdminPanel() {
           />
         </div>
 
-        <div>
+        <div className="form-group">
           <label>Password:</label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            minLength="6"
           />
         </div>
 
-        <div>
+        <div className="form-group">
           <label>Role:</label>
           <select value={role} onChange={(e) => setRole(e.target.value)}>
             <option value="hr">HR</option>
@@ -94,7 +107,7 @@ export default function AdminPanel() {
           </select>
         </div>
 
-        <div>
+        <div className="form-group">
           <label>Department:</label>
           <input
             type="text"
@@ -104,7 +117,7 @@ export default function AdminPanel() {
           />
         </div>
 
-        <div>
+        <div className="form-group">
           <label>Position:</label>
           <input
             type="text"
@@ -114,7 +127,7 @@ export default function AdminPanel() {
           />
         </div>
 
-        <div>
+        <div className="form-group">
           <label>Salary:</label>
           <input
             type="number"
@@ -124,10 +137,14 @@ export default function AdminPanel() {
           />
         </div>
 
-        <button type="submit">Create Account</button>
+        <button type="submit" className="admin-submit-btn">Create Account</button>
       </form>
 
-      {message && <p className="success-message">{message}</p>}
+      {message && (
+        <p className={`message-toast ${message.includes('✅') ? 'success' : 'error'}`}>
+          {message}
+        </p>
+      )}
     </div>
   );
 }

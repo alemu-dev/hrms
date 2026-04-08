@@ -5,214 +5,272 @@ export default function EmployeeWorkspace() {
   const [employee, setEmployee] = useState(null);
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [showLeaveForm, setShowLeaveForm] = useState(false);
-  const [leaveType, setLeaveType] = useState("");
+  const [reason, setReason] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [message, setMessage] = useState("");
-  const [showProfile, setShowProfile] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
 
   // Load employee profile and leave requests
   useEffect(() => {
     const userId = localStorage.getItem("userId");
-    if (!userId) {
-      setMessage("❌ No logged-in user found.");
+    const token = localStorage.getItem("auth_token"); // ✅ Added token retrieval
+
+    if (!userId || !token) {
+      setMessage("❌ No logged-in session found. Please login again.");
       return;
     }
 
-    fetch(`http://127.0.0.1:8000/api/employee-profile/${userId}`)
-      .then(res => res.json())
+    const authHeaders = {
+      "Accept": "application/json",
+      "Authorization": `Bearer ${token}` // ✅ Required for Laravel Sanctum
+    };
+
+    fetch(`http://hrms-backend.test/api/employee-profile/${userId}`, { headers: authHeaders })
+      .then(res => {
+        if (!res.ok) throw new Error("Unauthorized");
+        return res.json();
+      })
       .then(data => {
         setEmployee(data);
-
-        fetch(`http://127.0.0.1:8000/api/leave-requests/${data.id}`)
+        // Load leave requests using the employee's user_id
+        fetch(`http://hrms-backend.test/api/leave-requests/${data.user_id}`, { headers: authHeaders })
           .then(res => res.json())
-          .then(reqs => setLeaveRequests(reqs))
+          .then(reqs => setLeaveRequests(Array.isArray(reqs) ? reqs : []))
           .catch(err => console.error("Error loading leave requests:", err));
       })
-      .catch(err => console.error("Error loading employee profile:", err));
+      .catch(err => {
+        console.error("Error loading profile:", err);
+        setMessage("❌ Session expired. Please login.");
+      });
   }, []);
 
-  // Handle leave request submission
   const handleLeaveSubmit = async (e) => {
     e.preventDefault();
-
-    if (!employee?.id) {
-      setMessage("❌ Employee profile not loaded yet.");
-      return;
-    }
+    const token = localStorage.getItem("auth_token");
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/leave-requests", {
+      const payload = {
+        user_id: employee.user_id,
+        start_date: startDate,
+        end_date: endDate,
+        reason: reason
+      };
+
+      const response = await fetch("http://hrms-backend.test/api/leave-requests", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          employee_id: employee.id,
-          type: leaveType,
-          start_date: startDate,
-          end_date: endDate
-        })
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": `Bearer ${token}` // ✅ Added Authorization
+        },
+        body: JSON.stringify(payload)
       });
 
-      const data = await response.json();
-
       if (response.ok) {
-        setMessage("✅ " + data.message);
-        setLeaveType("");
-        setStartDate("");
-        setEndDate("");
+        setMessage("✅ Leave request submitted successfully");
+        setReason(""); setStartDate(""); setEndDate("");
         setShowLeaveForm(false);
-
-        fetch(`http://127.0.0.1:8000/api/leave-requests/${employee.id}`)
+        
+        // Refresh list after success
+        fetch(`http://hrms-backend.test/api/leave-requests/${employee.user_id}`, {
+          headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
+        })
           .then(res => res.json())
           .then(reqs => setLeaveRequests(reqs));
       } else {
-        if (data.errors) {
-          const errorMessages = Object.values(data.errors)
-            .reduce((acc, val) => acc.concat(val), [])
-            .join(" | ");
-          setMessage("❌ " + errorMessages);
-        } else {
-          setMessage("❌ " + (data.message || "Failed to submit leave"));
-        }
+        setMessage("❌ Failed to submit. Please check your data.");
       }
     } catch (error) {
-      setMessage("❌ Error submitting leave request. Please try again.");
+      setMessage("❌ Error submitting request.");
     }
   };
 
   return (
-    <div className="employee-workspace">
-      <h1>Employee Workspace</h1>
-      <p>Welcome Employee! View your profile, tasks, and company updates here.</p>
+    <div className="hp-dashboard-layout">
+      {/* --- SIDEBAR --- */}
+      <aside className="hp-sidebar">
+        <div className="hp-logo">HRMS PORTAL</div>
+        <nav>
+          <button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>📊 Dashboard</button>
+          <button className={activeTab === 'profile' ? 'active' : ''} onClick={() => setActiveTab('profile')}>👤 Full Profile</button>
+          <button className={activeTab === 'leave' ? 'active' : ''} onClick={() => setActiveTab('leave')}>📅 Leave Requests</button>
+        </nav>
+      </aside>
 
-      {/* Toggle button for profile */}
-      {employee && (
-        <button onClick={() => setShowProfile(!showProfile)}>
-          {showProfile ? "Hide Profile" : "See Profile"}
-        </button>
-      )}
+      {/* --- MAIN CONTENT --- */}
+      <main className="hp-main-content">
+        <header className="main-header">
+          <h1>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h1>
+          <div className="user-welcome">Welcome, <strong>{employee?.full_name}</strong></div>
+        </header>
 
-      {/* Profile section */}
-      {employee && showProfile && (
-        <div className="profile-card">
-          <h2>Your Profile</h2>
-          <p><strong>Name:</strong> {employee.full_name}</p>
-          <p><strong>Email:</strong> {employee.user?.email}</p>
-          <p><strong>Department:</strong> {employee.department}</p>
-          <p><strong>Position:</strong> {employee.position}</p>
-          <p><strong>Salary:</strong> {employee.salary}</p>
-          <p><strong>Status:</strong> {employee.status}</p>
+        {message && <p className="message-toast">{message}</p>}
 
-          <section className="section">
-            <h3>Biography</h3>
-            {employee?.user?.biography ? (
-              <div className="item">
-                <p><strong>Bio:</strong> {employee.user.biography.bio_text}</p>
+        {/* --- TAB: OVERVIEW --- */}
+        {activeTab === 'overview' && (
+          <div className="tab-content">
+            <div className="card summary-grid">
+              <div className="summary-item">
+                <label>Department</label>
+                <p>{employee?.department}</p>
               </div>
-            ) : <p>No biography available</p>}
-          </section>
+              <div className="summary-item">
+                <label>Position</label>
+                <p>{employee?.position}</p>
+              </div>
+              <div className="summary-item">
+                <label>Status</label>
+                <p><span className={`status-pill ${employee?.status}`}>{employee?.status}</span></p>
+              </div>
+            </div>
+          </div>
+        )}
 
-          <section className="section">
-            <h3>Education</h3>
-            {employee?.user?.education?.length > 0 ? (
-              employee.user.education.map((edu, i) => (
-                <div key={i} className="item">
-                  <p><strong>Level:</strong> {edu.level}</p>
-                  <p><strong>Field:</strong> {edu.field}</p>
-                  <p><strong>Institution:</strong> {edu.institution}</p>
-                  <p><strong>Start Date:</strong> {edu.start_date}</p>
-                  <p><strong>End Date:</strong> {edu.end_date}</p>
-                  <p><strong>Notes:</strong> {edu.notes}</p>
+        {/* --- TAB: FULL PROFILE (All 13 fields + Relational Data) --- */}
+        {activeTab === 'profile' && employee && (
+          <div className="tab-content profile-detailed">
+            <div className="card">
+              <div className="section-header">
+                <h2>Full Employee Record</h2>
+              </div>
+
+              {/* Comprehensive Database Info Grid */}
+              <div className="detail-info-grid">
+                <div className="detail-group">
+                  <h4>Personal & Contact</h4>
+                  <p><strong>Full Name:</strong> {employee.full_name}</p>
+                  <p><strong>Email:</strong> {employee.user?.email}</p>
+                  <p><strong>Salary:</strong> {employee.salary}</p>
+                  <p><strong>Phone:</strong> {employee.phone_number || "N/A"}</p>
+                  <p><strong>Address:</strong> {employee.address || "N/A"}</p>
+                  <p><strong>Date of Birth:</strong> {employee.date_of_birth || "N/A"}</p>
                 </div>
-              ))
-            ) : <p>No education records</p>}
-          </section>
-
-          <section className="section">
-            <h3>Experience</h3>
-            {employee?.user?.experience?.length > 0 ? (
-              employee.user.experience.map((exp, i) => (
-                <div key={i} className="item">
-                  <p><strong>Role:</strong> {exp.role}</p>
-                  <p><strong>Company:</strong> {exp.company}</p>
-                  <p><strong>Start Date:</strong> {exp.start_date}</p>
-                  <p><strong>End Date:</strong> {exp.end_date}</p>
-                  <p><strong>Responsibilities:</strong> {exp.responsibilities}</p>
+                
+                <div className="detail-group">
+                  <h4>Employment Info</h4>
+                  <p><strong>Staff ID:</strong> #EMP-{employee.user_id}</p>
+                  <p><strong>Department:</strong> {employee.department}</p>
+                  <p><strong>Position:</strong> {employee.position}</p>
+                  <p><strong>Hire Date:</strong> {employee.hire_date || "N/A"}</p>
+                  <p><strong>Status:</strong> <span className={`status-pill ${employee.status}`}>{employee.status}</span></p>
                 </div>
-              ))
-            ) : <p>No experience records</p>}
-          </section>
 
-          <section className="section">
-            <h3>Documents</h3>
-            {employee?.user?.documents?.length > 0 ? (
-              employee.user.documents.map((doc, i) => (
-                <div key={i} className="item">
-                  <p><strong>Type:</strong> {doc.document_type}</p>
-                  <p>
-                    <a
-                      href={`http://127.0.0.1:8000/storage/${doc.file_path}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="doc-link"
-                    >
-                      View Document
-                    </a>
-                  </p>
-                  <p><strong>Uploaded At:</strong> {doc.uploaded_at}</p>
+                <div className="detail-group">
+                  <h4>System Data</h4>
+                  <p><strong>Imployee ID:</strong> {employee.id}</p>
+                  <p><strong>Created:</strong> {new Date(employee.created_at).toLocaleDateString()}</p>
+                  <p><strong>Last Update:</strong> {new Date(employee.updated_at).toLocaleDateString()}</p>
                 </div>
-              ))
-            ) : <p>No documents uploaded</p>}
-          </section>
-        </div>
-      )}
+              </div>
 
-      {/* Leave form toggle */}
-      <button onClick={() => setShowLeaveForm(!showLeaveForm)}>
-        Ask for Leave
-      </button>
+              <section className="info-section">
+                <h3>🎓 Education History</h3>
+                {employee.user?.education?.map((edu, i) => (
+                  <div key={i} className="item-box history-card">
+                    <div className="history-header">
+                      <strong>{edu.level} in {edu.field}</strong>
+                      <span className="date-tag">{edu.start_date} to {edu.end_date}</span>
+                    </div>
+                    <p className="inst-name">{edu.institution}</p>
+                    {edu.notes && <p className="notes-text"><strong>Notes:</strong> {edu.notes}</p>}
+                  </div>
+                ))}
+              </section>
 
-      {showLeaveForm && (
-        <form className="leave-form" onSubmit={handleLeaveSubmit}>
-          <label>Leave Type</label>
-          <select value={leaveType} onChange={e => setLeaveType(e.target.value)} required>
-            <option value="">Select type</option>
-            <option value="annual">Annual Leave</option>
-            <option value="sick">Sick Leave</option>
-            <option value="maternity">Maternity Leave</option>
-            <option value="unpaid">Unpaid Leave</option>
-          </select>
+              <section className="info-section">
+                <h3>💼 Work Experience</h3>
+                {employee.user?.experience?.map((exp, i) => (
+                  <div key={i} className="item-box history-card">
+                    <div className="history-header">
+                      <strong>{exp.role}</strong>
+                      <span className="date-tag">{exp.start_date} to {exp.end_date}</span>
+                    </div>
+                    <p className="inst-name">{exp.company}</p>
+                    <p className="resp-text"><strong>Responsibilities:</strong> {exp.responsibilities}</p>
+                  </div>
+                ))}
+              </section>
 
-          <label>Start Date</label>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required />
+              <section className="info-section">
+                <h3>📜 Biography</h3>
+                <div className="item-box bio-box">
+                  <p>{employee.user?.biography?.bio_text || "No biography added yet."}</p>
+                </div>
+              </section>
 
-          <label>End Date</label>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required />
+              <section className="info-section">
+                <h3>📂 Documents</h3>
+                <div className="docs-grid">
+                  {employee.user?.documents?.map((doc, i) => (
+                    <div key={i} className="doc-card">
+                      <div className="doc-info">
+                        <strong>{doc.document_type}</strong>
+                        <span>ID: {doc.id} | Uploaded: {doc.uploaded_at}</span>
+                      </div>
+                      <a href={`http://hrms-backend.test/storage/${doc.file_path}`} target="_blank" rel="noreferrer" className="view-btn">
+                        View File
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </div>
+        )}
 
-          <button type="submit">Submit Request</button>
-        </form>
-      )}
+        {/* --- TAB: LEAVE REQUESTS --- */}
+        {activeTab === 'leave' && (
+          <div className="tab-content">
+            <div className="card">
+              <div className="header-row">
+                <h3>My Leave History</h3>
+                <button className="btn-primary" onClick={() => setShowLeaveForm(!showLeaveForm)}>
+                  {showLeaveForm ? "Close Form" : "New Request"}
+                </button>
+              </div>
 
-      {message && <p className="message">{message}</p>}
+              {showLeaveForm && (
+                <form className="leave-inline-form" onSubmit={handleLeaveSubmit}>
+                  <div className="form-group">
+                    <label>Reason</label>
+                    <select value={reason} onChange={e => setReason(e.target.value)} required>
+                      <option value="">Select Reason</option>
+                      <option value="annual">Annual Leave</option>
+                      <option value="sick">Sick Leave</option>
+                      <option value="unpaid">Unpaid Leave</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Start Date</label>
+                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} required />
+                  </div>
+                  <div className="form-group">
+                    <label>End Date</label>
+                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} required />
+                  </div>
+                  <button type="submit" className="submit-btn">Submit Request</button>
+                </form>
+              )}
 
-      <h2>Your Leave Requests</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Type</th><th>Start</th><th>End</th><th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {leaveRequests.map((req, idx) => (
-            <tr key={idx}>
-              <td>{req.type}</td>
-              <td>{req.start_date}</td>
-              <td>{req.end_date}</td>
-              <td className={`status ${req.status}`}>{req.status}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              <table className="modern-table">
+                <thead>
+                  <tr><th>Type</th><th>Dates</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  {leaveRequests.map((req, idx) => (
+                    <tr key={idx}>
+                      <td>{req.reason}</td>
+                      <td>{req.start_date} to {req.end_date}</td>
+                      <td><span className={`status-pill ${req.status}`}>{req.status}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

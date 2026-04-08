@@ -6,7 +6,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/overview")
+    fetch("http://hrms-backend.test/api/overview")
       .then(res => res.json())
       .then(data => {
         setOverview(data);

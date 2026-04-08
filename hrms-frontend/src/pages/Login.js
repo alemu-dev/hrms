@@ -11,10 +11,11 @@ export default function Login() {
     e.preventDefault();
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/login", {
+      const response = await fetch("http://hrms-backend.test/api/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Accept": "application/json",
         },
         body: JSON.stringify({ email, password }),
       });
@@ -22,20 +23,39 @@ export default function Login() {
       const data = await response.json();
 
       if (response.ok) {
-        alert("Login successful! Role: " + data.role);
+        // 1. CLEAR OLD DATA FIRST (Critical to prevent role mixing)
+        localStorage.clear();
 
-        // ✅ Save logged-in user ID for EmployeeWorkspace
+        // 2. SAVE NEW DATA
+        const userRole = data.role ? data.role.toLowerCase() : "";
+
+        /** * ✅ THE FIX: 
+         * Changed 'data.token' to 'data.access_token' 
+         * to match the Laravel UserController response.
+         */
+        localStorage.setItem("auth_token", data.access_token); 
+        localStorage.setItem("user_role", userRole);
+        
         if (data.user && data.user.id) {
           localStorage.setItem("userId", data.user.id);
         }
 
-        // Navigate based on role
-        if (data.role === "hr") navigate("/hr");
-        if (data.role === "director") navigate("/director");
-        if (data.role === "employee") navigate("/employee");
-        if (data.role === "admin") navigate("/admin");
+        console.log("Saved Token and Role:", userRole);
+
+        // 3. ALERT USER
+        alert("Login successful! Role: " + data.role);
+
+        // 4. NAVIGATION
+        setTimeout(() => {
+          if (userRole === "hr") navigate("/hr");
+          else if (userRole === "director") navigate("/director");
+          else if (userRole === "employee") navigate("/employee");
+          else if (userRole === "admin") navigate("/admin");
+          else navigate("/");
+        }, 100);
+
       } else {
-        alert("Login failed: " + data.message);
+        alert("Login failed: " + (data.message || "Invalid credentials"));
       }
     } catch (error) {
       console.error("Error:", error);

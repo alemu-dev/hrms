@@ -12,12 +12,13 @@ class LeaveRequest extends Model
     protected $table = 'leave_requests';
 
     protected $fillable = [
-        'employee_id',
-        'type',
-        'start_date',
-        'end_date',
-        'status',
-    ];
+    'user_id',
+    'start_date',
+    'end_date',
+    'reason',
+    'status',
+]
+;
 
     // Relationship: each leave request belongs to one employee
     public function employee()
