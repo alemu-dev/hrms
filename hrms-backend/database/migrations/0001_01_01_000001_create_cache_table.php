@@ -11,16 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Ensure the 'key' column is defined as the primary key for Aiven compatibility
         Schema::create('cache', function (Blueprint $table) {
-            $table->string('key')->primary();
+            $table->string('key')->primary(); 
             $table->mediumText('value');
-            $table->integer('expiration')->index();
+            $table->integer('expiration');
         });
 
+        // Ensure 'key' is the primary key here as well
         Schema::create('cache_locks', function (Blueprint $table) {
             $table->string('key')->primary();
             $table->string('owner');
-            $table->integer('expiration')->index();
+            $table->integer('expiration');
         });
     }
 
