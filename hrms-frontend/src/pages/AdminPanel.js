@@ -21,7 +21,7 @@ export default function AdminPanel() {
     }
 
     try {
-      const response = await fetch("http://hrms-backend.test/api/users", {
+      const response = await fetch("https://hrms-owyj.onrender.com/api/users", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",

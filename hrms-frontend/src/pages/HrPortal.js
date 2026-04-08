@@ -4,7 +4,7 @@ import EmployeeProfile from "../components/hr/EmployeeProfile";
 import EmployeeTabs from "../components/hr/EmployeeTabs";
 import "../components/hr/HrPortal.css";
 
-const API_BASE = "http://hrms-backend.test/api"; 
+const API_BASE = "https://hrms-owyj.onrender.com/api"; 
 
 export default function HrPortal() {
   const [activeScreen, setActiveScreen] = useState("dashboard");

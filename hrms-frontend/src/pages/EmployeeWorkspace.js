@@ -26,7 +26,7 @@ export default function EmployeeWorkspace() {
       "Authorization": `Bearer ${token}` // ✅ Required for Laravel Sanctum
     };
 
-    fetch(`http://hrms-backend.test/api/employee-profile/${userId}`, { headers: authHeaders })
+    fetch(`https://hrms-owyj.onrender.com/api/employee-profile/${userId}`, { headers: authHeaders })
       .then(res => {
         if (!res.ok) throw new Error("Unauthorized");
         return res.json();
@@ -34,7 +34,7 @@ export default function EmployeeWorkspace() {
       .then(data => {
         setEmployee(data);
         // Load leave requests using the employee's user_id
-        fetch(`http://hrms-backend.test/api/leave-requests/${data.user_id}`, { headers: authHeaders })
+        fetch(`https://hrms-owyj.onrender.com/api/leave-requests/${data.user_id}`, { headers: authHeaders })
           .then(res => res.json())
           .then(reqs => setLeaveRequests(Array.isArray(reqs) ? reqs : []))
           .catch(err => console.error("Error loading leave requests:", err));
@@ -57,7 +57,7 @@ export default function EmployeeWorkspace() {
         reason: reason
       };
 
-      const response = await fetch("http://hrms-backend.test/api/leave-requests", {
+      const response = await fetch("https://hrms-owyj.onrender.com/api/leave-requests", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -73,7 +73,7 @@ export default function EmployeeWorkspace() {
         setShowLeaveForm(false);
         
         // Refresh list after success
-        fetch(`http://hrms-backend.test/api/leave-requests/${employee.user_id}`, {
+        fetch(`https://hrms-owyj.onrender.com/api/leave-requests/${employee.user_id}`, {
           headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
         })
           .then(res => res.json())
@@ -208,7 +208,7 @@ export default function EmployeeWorkspace() {
                         <strong>{doc.document_type}</strong>
                         <span>ID: {doc.id} | Uploaded: {doc.uploaded_at}</span>
                       </div>
-                      <a href={`http://hrms-backend.test/storage/${doc.file_path}`} target="_blank" rel="noreferrer" className="view-btn">
+                      <a href={`https://hrms-owyj.onrender.com/storage/${doc.file_path}`} target="_blank" rel="noreferrer" className="view-btn">
                         View File
                       </a>
                     </div>

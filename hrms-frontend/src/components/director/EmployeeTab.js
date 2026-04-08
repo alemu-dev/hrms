@@ -13,7 +13,7 @@ export default function EmployeeTab({ employees }) {
 
     try {
       // ✅ ADDED HEADERS TO UNLOCK FETCH
-      const res = await fetch(`http://hrms-backend.test/api/employees/${id}`, {
+      const res = await fetch(`https://hrms-owyj.onrender.com/api/employees/${id}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -166,7 +166,7 @@ export default function EmployeeTab({ employees }) {
                     <div key={doc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 15px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
                       <span style={{ fontWeight: '600' }}>📄 {doc.document_type}</span>
                       <a 
-                        href={`http://hrms-backend.test/storage/${doc.file_path}`} 
+                        href={`https://hrms-owyj.onrender.com/storage/${doc.file_path}`} 
                         target="_blank" 
                         rel="noreferrer"
                         style={{ color: '#2563eb', fontWeight: 'bold', fontSize: '0.8rem', textDecoration: 'none' }}

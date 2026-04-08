@@ -150,7 +150,7 @@ export default function EmployeeTabs({
             <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
               <span style={{ color: '#1e293b', fontWeight: '600' }}>📄 {doc.document_type || "Attachment"}</span>
               <a 
-                href={`http://hrms-backend.test/storage/${doc.file_path}`} 
+                href={`https://hrms-owyj.onrender.com/storage/${doc.file_path}`} 
                 target="_blank" 
                 rel="noreferrer" 
                 style={{ color: '#2563eb', textDecoration: 'none', fontSize: '0.85rem', fontWeight: '700', padding: '4px 12px', background: '#fff', border: '1px solid #2563eb', borderRadius: '4px' }}
