@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->string('full_name');
             // Adding gender here. We make it nullable so old records stay safe.
-            $table->string('gender')->nullable()->after('full_name'); 
+            $table->string('gender')->nullable(); 
             $table->string('department')->nullable();
             $table->string('position')->nullable();
             $table->decimal('salary', 10, 2)->nullable();
