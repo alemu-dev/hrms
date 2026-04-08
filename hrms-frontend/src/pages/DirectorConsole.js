@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { 
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, 
-  BarChart, Bar, XAxis, YAxis, Legend, CartesianGrid,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
   LineChart, Line, AreaChart, Area 
 } from "recharts";
 import EmployeeTab from "../components/director/EmployeeTab.js";
