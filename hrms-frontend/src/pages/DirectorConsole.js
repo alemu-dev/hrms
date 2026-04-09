@@ -13,8 +13,7 @@ export default function DirectorConsole() {
   const [activeTab, setActiveTab] = useState("main");
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Toggle the visual style for the entire dashboard at once
+  const [isMenuOpen, setIsMenuOpen] = useState(false); 
   const [globalChartStyle, setGlobalChartStyle] = useState("bar");
 
   useEffect(() => {
@@ -32,8 +31,7 @@ export default function DirectorConsole() {
         });
 
         if (res.status === 401) {
-          localStorage.clear();
-          window.location.href = "/login";
+          terminateSession();
           return;
         }
 
@@ -49,15 +47,25 @@ export default function DirectorConsole() {
     loadData();
   }, []);
 
-  // --- Helper to format data for any metric ---
+  // --- Session Management ---
+  const terminateSession = () => {
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("user_data"); // Clear any other stored user info
+    window.location.href = "/login";
+  };
+
+  const handleLogout = () => {
+    if (window.confirm("Are you sure you want to logout and end your session?")) {
+      terminateSession();
+    }
+  };
+
+  // --- Data Formatting Logic ---
   const formatDataForMetric = (metric) => {
     const counts = {};
     employees.forEach((emp) => {
       let key = "Not Specified";
-
-      // Logic to extract the correct key based on metric
       if (metric === "level") {
-        // Since 'level' is inside user.education (which is an array), we take the first one
         if (emp.user?.education && emp.user.education.length > 0) {
           key = emp.user.education[0].level;
         }
@@ -68,17 +76,13 @@ export default function DirectorConsole() {
         else if (s < 50000) key = "30k-50k";
         else key = "50k+";
       } else {
-        // For department or gender
         key = emp[metric] || "Not Specified";
       }
-
-      // Standardize casing (e.g., 'BA' and 'ba' become the same)
       const label = key.toUpperCase();
       counts[label] = (counts[label] || 0) + 1;
     });
 
     const eduOrder = ["DIPLOMA", "DEGREE", "BA", "BSC", "MA", "MSC", "MBA", "PHD", "NOT SPECIFIED"];
-    
     return Object.keys(counts).map(k => ({ name: k, value: counts[k] }))
       .sort((a, b) => {
         if (metric === "level") return eduOrder.indexOf(a.name) - eduOrder.indexOf(b.name);
@@ -88,14 +92,13 @@ export default function DirectorConsole() {
 
   const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
-  // --- Internal Component to render specific chart types based on global selection ---
   const DataChart = ({ title, metric }) => {
     const data = formatDataForMetric(metric);
     const commonProps = { data, margin: { top: 10, right: 10, left: -20, bottom: 0 } };
 
     return (
-      <div className="chart-card" style={{ background: "#fff", padding: "20px", borderRadius: "12px", boxShadow: "0 4px 6px rgba(0,0,0,0.05)" }}>
-        <h3 style={{ marginBottom: "15px", color: "#475569", fontSize: "1.1rem" }}>{title}</h3>
+      <div className="chart-card">
+        <h3>{title}</h3>
         <ResponsiveContainer width="100%" height={250}>
           {globalChartStyle === "pie" ? (
             <PieChart>
@@ -136,32 +139,42 @@ export default function DirectorConsole() {
 
   return (
     <div className="director-container">
-      <nav className="left-navbar">
+      {/* Mobile Header/Toggle */}
+      <button className="mobile-toggle-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+        {isMenuOpen ? "✕" : "☰"}
+      </button>
+
+      {/* Sidebar with Integrated Logout */}
+      <nav className={`left-navbar ${isMenuOpen ? "mobile-open" : ""}`}>
         <div className="nav-logo">DIRECTOR PANEL</div>
         <ul className="nav-links">
-          <li className={activeTab === "main" ? "active" : ""} onClick={() => setActiveTab("main")}>🏠 Dashboard</li>
-          <li className={activeTab === "employees" ? "active" : ""} onClick={() => setActiveTab("employees")}>👥 Employees</li>
-          <li className={activeTab === "leaves" ? "active" : ""} onClick={() => setActiveTab("leaves")}>📅 Leaves</li>
-          <li className={activeTab === "overview" ? "active" : ""} onClick={() => setActiveTab("overview")}>📢 Updates</li>
+          <li className={activeTab === "main" ? "active" : ""} onClick={() => { setActiveTab("main"); setIsMenuOpen(false); }}>🏠 Dashboard</li>
+          <li className={activeTab === "employees" ? "active" : ""} onClick={() => { setActiveTab("employees"); setIsMenuOpen(false); }}>👥 Employees</li>
+          <li className={activeTab === "leaves" ? "active" : ""} onClick={() => { setActiveTab("leaves"); setIsMenuOpen(false); }}>📅 Leaves</li>
+          <li className={activeTab === "overview" ? "active" : ""} onClick={() => { setActiveTab("overview"); setIsMenuOpen(false); }}>📢 Updates</li>
+          
+          {/* Logout button at the bottom of the nav */}
+          <li className="nav-logout-item" onClick={handleLogout} style={{ marginTop: 'auto', color: '#ef4444', fontWeight: 'bold' }}>
+            🚪 Logout
+          </li>
         </ul>
       </nav>
 
-      <main className="main-content" style={{ background: "#f8fafc" }}>
+      {/* Overlay for mobile sidebar */}
+      {isMenuOpen && <div className="sidebar-overlay" onClick={() => setIsMenuOpen(false)}></div>}
+
+      <main className="main-content">
         {loading ? (
           <div className="loading-spinner"><h3>Syncing Data...</h3></div>
         ) : (
           <>
             {activeTab === "main" && (
               <div className="dashboard-summary">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <div className="dashboard-header-flex">
                   <h1>Executive Analytics Dashboard</h1>
-                  <div style={{ display: "flex", gap: "10px", alignItems: "center", background: "#fff", padding: "10px", borderRadius: "30px", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}>
-                    <span style={{ fontWeight: "600", fontSize: "0.9rem", marginLeft: "5px" }}>Visual Style:</span>
-                    <select 
-                      value={globalChartStyle} 
-                      onChange={(e) => setGlobalChartStyle(e.target.value)}
-                      style={{ border: "none", outline: "none", background: "transparent", color: "#6366f1", fontWeight: "bold", cursor: "pointer" }}
-                    >
+                  <div className="style-selector-container">
+                    <span>Visual Style:</span>
+                    <select value={globalChartStyle} onChange={(e) => setGlobalChartStyle(e.target.value)}>
                       <option value="bar">Bar Graphs</option>
                       <option value="pie">Pie Charts</option>
                       <option value="line">Line Graphs</option>
@@ -176,12 +189,11 @@ export default function DirectorConsole() {
                   <div className="stat-box"><h3>System Status</h3><p style={{ color: "#22c55e" }}>Active</p></div>
                 </div>
 
-                {/* --- 4-CHART GRID VIEW --- */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(450px, 1fr))", gap: "20px", marginTop: "25px" }}>
+                <div className="charts-main-grid">
                   <DataChart title="Staff by Department" metric="department" />
                   <DataChart title="Gender Distribution" metric="gender" />
                   <DataChart title="Education Qualifications" metric="level" />
-                  <DataChart title="Salary Brackets (Histogram)" metric="salary" />
+                  <DataChart title="Salary Brackets" metric="salary" />
                 </div>
               </div>
             )}

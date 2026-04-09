@@ -10,6 +10,7 @@ export default function HrPortal() {
   const [activeScreen, setActiveScreen] = useState("dashboard");
   const [activeTab, setActiveTab] = useState("education");
   const [isEditing, setIsEditing] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // For responsive toggle
 
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -27,7 +28,15 @@ export default function HrPortal() {
     loadEmployees();
   }, []);
 
-  // ✅ ADDED: Security Badge logic for loading the list
+  // Terminate Session logic
+  const handleLogout = () => {
+    if (window.confirm("Are you sure you want to logout?")) {
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("user_data");
+      window.location.reload(); // Refresh to clear state and redirect to login
+    }
+  };
+
   const loadEmployees = async () => {
     const token = localStorage.getItem("auth_token");
     try {
@@ -45,8 +54,8 @@ export default function HrPortal() {
     }
   };
 
-  // ✅ ADDED: Security Badge logic for specific employee details
   const handleSelectEmployee = async (emp) => {
+    setIsSidebarOpen(false);
     if (!emp) {
       setSelectedEmployee(null);
       setEducation([]);
@@ -83,7 +92,6 @@ export default function HrPortal() {
     }
   };
 
-  // ✅ ADDED: Security Badge logic for Save/Update
   const handleGlobalSave = async (profileData) => {
     if (!window.confirm("Save all changes to the database?")) return;
 
@@ -131,7 +139,7 @@ export default function HrPortal() {
         headers: { 
           "Content-Type": "application/json",
           "Accept": "application/json",
-          "Authorization": `Bearer ${token}` // ✅ Added token
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify(payload)
       });
@@ -144,20 +152,16 @@ export default function HrPortal() {
         await loadEmployees(); 
         setActiveScreen("list");
       } else {
-        console.error("Validation Errors:", responseData.errors);
         const errorDetails = responseData.errors 
           ? Object.values(responseData.errors).flat().join("\n")
           : responseData.message;
-          
         alert(`Validation Error:\n${errorDetails}`);
       }
     } catch (err) {
-      console.error("Fetch Error:", err);
-      alert("Network error: Check your connection to the Laravel server.");
+      alert("Network error: Check your connection.");
     }
   };
   
-  // ✅ ADDED: Security Badge logic for Delete
   const handleGlobalDelete = async (id) => {
     if (!id || !window.confirm("Delete this employee record permanently?")) return;
     const token = localStorage.getItem("auth_token");
@@ -166,7 +170,7 @@ export default function HrPortal() {
         method: "DELETE",
         headers: {
           "Accept": "application/json",
-          "Authorization": `Bearer ${token}` // ✅ Added token
+          "Authorization": `Bearer ${token}`
         }
       });
       if (res.ok) {
@@ -180,14 +184,33 @@ export default function HrPortal() {
 
   return (
     <div className="hp-dashboard-layout">
-      <aside className="hp-sidebar">
-        <div className="hp-logo">HRMS PRO</div>
-        <nav>
-          <button className={activeScreen === "dashboard" ? "active" : ""} onClick={() => setActiveScreen("dashboard")}>🏠 Dashboard</button>
-          <button className={activeScreen === "list" ? "active" : ""} onClick={() => setActiveScreen("list")}>👥 Employee List</button>
-          <button onClick={() => handleSelectEmployee(null)}>➕ Add New Staff</button>
+      {/* Mobile Header */}
+      <header className="hp-mobile-header">
+        <div className="hp-logo-small">HRMS PRO</div>
+        <button className="hp-menu-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+          {isSidebarOpen ? "✕" : "⋮"} 
+        </button>
+      </header>
+
+      {/* Sidebar with Logout */}
+      <aside className={`hp-sidebar ${isSidebarOpen ? "hp-sidebar-open" : ""}`}>
+        <div className="hp-sidebar-header">
+            <div className="hp-logo">HRMS PRO</div>
+            <button className="hp-close-sidebar" onClick={() => setIsSidebarOpen(false)}>✕</button>
+        </div>
+        <nav className="hp-nav">
+          <button className={`hp-nav-link ${activeScreen === "dashboard" ? "active" : ""}`} onClick={() => { setActiveScreen("dashboard"); setIsSidebarOpen(false); }}>🏠 Dashboard</button>
+          <button className={`hp-nav-link ${activeScreen === "list" ? "active" : ""}`} onClick={() => { setActiveScreen("list"); setIsSidebarOpen(false); }}>👥 Employee List</button>
+          <button className="hp-nav-link hp-btn-add-nav" onClick={() => handleSelectEmployee(null)}>➕ Add New Staff</button>
+          
+          {/* Logout Button */}
+          <button className="hp-nav-link" style={{ marginTop: 'auto', color: '#ef4444' }} onClick={handleLogout}>
+            🚪 Logout
+          </button>
         </nav>
       </aside>
+
+      {isSidebarOpen && <div className="hp-overlay" onClick={() => setIsSidebarOpen(false)}></div>}
 
       <main className="hp-main-content">
         {activeScreen === "dashboard" && (
@@ -196,18 +219,18 @@ export default function HrPortal() {
               <h1>HR Management</h1>
               <p>Total Records: <strong>{employees.length}</strong></p>
             </div>
-            <div className="hp-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginTop: '20px' }}>
-               <div className="stat-card" style={{ padding: '20px', background: '#fff', borderRadius: '10px', textAlign: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                  <h4 style={{ margin: 0, color: '#64748b' }}>Active</h4>
-                  <h2 style={{ margin: '10px 0', color: '#10b981' }}>{employees.filter(e => e.status === 'active').length}</h2>
+            <div className="hp-stats-grid">
+               <div className="hp-stat-card">
+                  <h4 className="hp-stat-label">Active</h4>
+                  <h2 className="hp-stat-value hp-color-green">{employees.filter(e => e.status === 'active').length}</h2>
                </div>
-               <div className="stat-card" style={{ padding: '20px', background: '#fff', borderRadius: '10px', textAlign: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                  <h4 style={{ margin: 0, color: '#64748b' }}>On Leave</h4>
-                  <h2 style={{ margin: '10px 0', color: '#f59e0b' }}>{employees.filter(e => e.status === 'on-leave').length}</h2>
+               <div className="hp-stat-card">
+                  <h4 className="hp-stat-label">On Leave</h4>
+                  <h2 className="hp-stat-value hp-color-orange">{employees.filter(e => e.status === 'on-leave').length}</h2>
                </div>
-               <div className="stat-card" style={{ padding: '20px', background: '#fff', borderRadius: '10px', textAlign: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                  <h4 style={{ margin: 0, color: '#64748b' }}>Departments</h4>
-                  <h2 style={{ margin: '10px 0', color: '#2563eb' }}>{[...new Set(employees.map(e => e.department))].length}</h2>
+               <div className="hp-stat-card">
+                  <h4 className="hp-stat-label">Departments</h4>
+                  <h2 className="hp-stat-value hp-color-blue">{[...new Set(employees.map(e => e.department))].length}</h2>
                </div>
             </div>
           </div>
@@ -226,9 +249,8 @@ export default function HrPortal() {
 
         {activeScreen === "editor" && (
           <div className="hp-editor-view">
-            <button className="btn-secondary" style={{ marginBottom: '15px', cursor: 'pointer' }} onClick={() => setActiveScreen("list")}>← Back to List</button>
-            
-            <div className="hp-editor-grid" style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '20px', alignItems: 'start' }}>
+            <button className="hp-btn-back" onClick={() => setActiveScreen("list")}>← Back to List</button>
+            <div className="hp-editor-layout">
               <EmployeeProfile 
                 employee={selectedEmployee} 
                 isEditing={isEditing}
@@ -236,7 +258,6 @@ export default function HrPortal() {
                 onSave={handleGlobalSave} 
                 onDelete={handleGlobalDelete} 
               />
-              
               <EmployeeTabs 
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}

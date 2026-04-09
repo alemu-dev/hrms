@@ -11,10 +11,22 @@ export default function EmployeeWorkspace() {
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
 
+  // NEW: State for mobile sidebar responsiveness
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // NEW: Logout Logic
+  const handleLogout = () => {
+    if (window.confirm("Are you sure you want to log out?")) {
+      localStorage.removeItem("userId");
+      localStorage.removeItem("auth_token");
+      window.location.href = "/login"; // Redirect to login page
+    }
+  };
+
   // Load employee profile and leave requests
   useEffect(() => {
     const userId = localStorage.getItem("userId");
-    const token = localStorage.getItem("auth_token"); // ✅ Added token retrieval
+    const token = localStorage.getItem("auth_token");
 
     if (!userId || !token) {
       setMessage("❌ No logged-in session found. Please login again.");
@@ -23,11 +35,15 @@ export default function EmployeeWorkspace() {
 
     const authHeaders = {
       "Accept": "application/json",
-      "Authorization": `Bearer ${token}` // ✅ Required for Laravel Sanctum
+      "Authorization": `Bearer ${token}`
     };
 
     fetch(`https://hrms-owyj.onrender.com/api/employee-profile/${userId}`, { headers: authHeaders })
       .then(res => {
+        if (res.status === 401) {
+          handleLogout(); // Auto-logout if token is expired
+          return;
+        }
         if (!res.ok) throw new Error("Unauthorized");
         return res.json();
       })
@@ -62,7 +78,7 @@ export default function EmployeeWorkspace() {
         headers: { 
           "Content-Type": "application/json",
           "Accept": "application/json",
-          "Authorization": `Bearer ${token}` // ✅ Added Authorization
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify(payload)
       });
@@ -88,15 +104,40 @@ export default function EmployeeWorkspace() {
 
   return (
     <div className="hp-dashboard-layout">
+      {/* NEW: Mobile Toggle Button */}
+      <button className="mobile-menu-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+        {isSidebarOpen ? "✕" : "☰"}
+      </button>
+
       {/* --- SIDEBAR --- */}
-      <aside className="hp-sidebar">
+      <aside className={`hp-sidebar ${isSidebarOpen ? "mobile-open" : ""}`}>
         <div className="hp-logo">HRMS PORTAL</div>
         <nav>
-          <button className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>📊 Dashboard</button>
-          <button className={activeTab === 'profile' ? 'active' : ''} onClick={() => setActiveTab('profile')}>👤 Full Profile</button>
-          <button className={activeTab === 'leave' ? 'active' : ''} onClick={() => setActiveTab('leave')}>📅 Leave Requests</button>
+          <button 
+            className={activeTab === 'overview' ? 'active' : ''} 
+            onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }}>
+            📊 Dashboard
+          </button>
+          <button 
+            className={activeTab === 'profile' ? 'active' : ''} 
+            onClick={() => { setActiveTab('profile'); setIsSidebarOpen(false); }}>
+            👤 Full Profile
+          </button>
+          <button 
+            className={activeTab === 'leave' ? 'active' : ''} 
+            onClick={() => { setActiveTab('leave'); setIsSidebarOpen(false); }}>
+            📅 Leave Requests
+          </button>
+          
+          {/* NEW: Logout Button at the bottom of Nav */}
+          <button className="logout-btn" onClick={handleLogout}>
+            🚪 Logout
+          </button>
         </nav>
       </aside>
+
+      {/* NEW: Overlay for mobile when sidebar is open */}
+      {isSidebarOpen && <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)}></div>}
 
       {/* --- MAIN CONTENT --- */}
       <main className="hp-main-content">
@@ -127,7 +168,7 @@ export default function EmployeeWorkspace() {
           </div>
         )}
 
-        {/* --- TAB: FULL PROFILE (All 13 fields + Relational Data) --- */}
+        {/* --- TAB: FULL PROFILE --- */}
         {activeTab === 'profile' && employee && (
           <div className="tab-content profile-detailed">
             <div className="card">
@@ -135,7 +176,6 @@ export default function EmployeeWorkspace() {
                 <h2>Full Employee Record</h2>
               </div>
 
-              {/* Comprehensive Database Info Grid */}
               <div className="detail-info-grid">
                 <div className="detail-group">
                   <h4>Personal & Contact</h4>
@@ -158,7 +198,7 @@ export default function EmployeeWorkspace() {
 
                 <div className="detail-group">
                   <h4>System Data</h4>
-                  <p><strong>Imployee ID:</strong> {employee.id}</p>
+                  <p><strong>Employee ID:</strong> {employee.id}</p>
                   <p><strong>Created:</strong> {new Date(employee.created_at).toLocaleDateString()}</p>
                   <p><strong>Last Update:</strong> {new Date(employee.updated_at).toLocaleDateString()}</p>
                 </div>
