@@ -11,13 +11,18 @@ return new class extends Migration
         Schema::create('employee_movements', function (Blueprint $table) {
             $table->id();
 
-            // Link to employee_profiles (IMPORTANT FIX)
+            // Link to employee_profiles
             $table->foreignId('employee_id')
                   ->constrained('employee_profiles')
                   ->cascadeOnDelete();
 
-            // Movement type (promotion, transfer, etc.)
-            $table->string('type');
+            // Movement type (controlled values)
+            $table->enum('type', [
+                'promotion',
+                'transfer',
+                'demotion',
+                'salary_adjustment'
+            ]);
 
             // Position
             $table->string('old_position')->nullable();
@@ -31,9 +36,9 @@ return new class extends Migration
             $table->integer('old_step')->nullable();
             $table->integer('new_step')->nullable();
 
-            // Salary
-            $table->decimal('old_salary', 10, 2)->nullable();
-            $table->decimal('new_salary', 10, 2)->nullable();
+            // Salary (higher precision for safety)
+            $table->decimal('old_salary', 12, 2)->nullable();
+            $table->decimal('new_salary', 12, 2)->nullable();
 
             // Effective date
             $table->date('effective_date');
@@ -48,6 +53,10 @@ return new class extends Migration
             $table->text('remarks')->nullable();
 
             $table->timestamps();
+
+            // Indexes (performance optimization)
+            $table->index('employee_id');
+            $table->index('effective_date');
         });
     }
 
