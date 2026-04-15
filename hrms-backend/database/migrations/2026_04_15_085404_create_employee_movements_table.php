@@ -6,9 +6,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('employee_movements', function (Blueprint $table) {
@@ -18,7 +15,7 @@ return new class extends Migration
                   ->constrained()
                   ->cascadeOnDelete();
 
-            $table->string('type'); // promotion, transfer, etc.
+            $table->string('type');
 
             $table->string('old_position')->nullable();
             $table->string('new_position')->nullable();
@@ -45,9 +42,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('employee_movements');
