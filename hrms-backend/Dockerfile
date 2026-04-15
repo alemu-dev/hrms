@@ -23,8 +23,10 @@ RUN composer install --no-dev --optimize-autoloader
 # Expose port
 EXPOSE 10000
 
-# ✅ SAFE START (NO DATA LOSS)
+# ✅ FINAL SAFE START (WITH SEEDER)
 CMD php artisan migrate --force \
+    && php artisan db:seed --force \
+    && php artisan config:clear \
     && php artisan config:cache \
     && php artisan route:cache \
     && php artisan serve --host=0.0.0.0 --port=10000
