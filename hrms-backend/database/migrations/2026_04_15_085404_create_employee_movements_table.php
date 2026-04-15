@@ -11,10 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('employee_movements', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
-        });
+        // Prevent crash if table already exists (VERY IMPORTANT for production)
+        if (!Schema::hasTable('employee_movements')) {
+            Schema::create('employee_movements', function (Blueprint $table) {
+                $table->id();
+                $table->timestamps();
+            });
+        }
     }
 
     /**
