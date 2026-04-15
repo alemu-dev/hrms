@@ -1,35 +1,27 @@
-FROM php:8.2-apache
+FROM php:8.2-cli
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
-    unzip \
     git \
-    curl
+    unzip \
+    curl \
+    libzip-dev \
+    && docker-php-ext-install pdo pdo_mysql zip
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
-
-# Get latest Composer
+# Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Set working directory
-WORKDIR /var/www/html
+WORKDIR /var/www
 
 # Copy project files
 COPY . .
 
-# Install dependencies
+# Install Laravel dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-# Set permissions for Laravel
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# Expose port
+EXPOSE 10000
 
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
-COPY .render/apache.conf /etc/apache2/sites-available/000-default.conf
-
-EXPOSE 80
+# Start app
+CMD php artisan serve --host=0.0.0.0 --port=10000
