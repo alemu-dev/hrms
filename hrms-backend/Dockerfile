@@ -23,5 +23,5 @@ RUN composer install --no-dev --optimize-autoloader
 # Expose port
 EXPOSE 10000
 
-# Start app
-CMD php artisan serve --host=0.0.0.0 --port=10000
+# 🔥 IMPORTANT: Run migration BEFORE starting server
+CMD php artisan migrate --force && php artisan config:cache && php artisan serve --host=0.0.0.0 --port=10000
