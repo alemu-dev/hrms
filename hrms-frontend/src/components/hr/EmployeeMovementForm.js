@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import "./HrPortal.css";
 
-const API_BASE = "http://hrms-backend.test/api";
+const API_BASE = "https://hrms-owyj.onrender.com/api";
 
 export default function EmployeeMovementForm() {
   const [employeeId, setEmployeeId] = useState("");
@@ -114,7 +114,7 @@ export default function EmployeeMovementForm() {
     const finalStep = newStep || oldStep;
 
     if (!window.confirm("⚠️ This will permanently change employee data. Continue?")) return;
-    if (!window.confirm("❗ Are you absolutely sure? This cannot be undone.")) return;
+    if (!window.confirm("❗sure? This cannot be undone.")) return;
 
     try {
       const res = await fetch(`${API_BASE}/movements`, {

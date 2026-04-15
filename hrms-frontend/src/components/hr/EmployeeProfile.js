@@ -175,7 +175,7 @@ export default function EmployeeProfile({
               src={
                 typeof form.photo === "string" && form.photo.startsWith("blob:")
                   ? form.photo
-                  : `http://hrms-backend.test/storage/${form.photo}?t=${Date.now()}`
+                  : `https://hrms-owyj.onrender.com/storage/${form.photo}?t=${Date.now()}`
               }
               alt="employee"
               style={{ width: "120px", height: "120px", objectFit: "cover" }}
@@ -195,7 +195,7 @@ export default function EmployeeProfile({
               src={
                 typeof form.national_id === "string" && form.national_id.startsWith("blob:")
                   ? form.national_id
-                  : `http://hrms-backend.test/storage/${form.national_id}?t=${Date.now()}`
+                  : `https://hrms-owyj.onrender.com/storage/${form.national_id}?t=${Date.now()}`
               }
               alt="id"
               style={{ width: "180px" }}

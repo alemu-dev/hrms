@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import "./HrPortal.css";
 import logo from "./stica.png"; // ✅ your logo
 
-const API_BASE = "http://hrms-backend.test/api";
+const API_BASE = "https://hrms-owyj.onrender.com/api";
 
 export default function EmployeeReport({ employeeId }) {
   const [employee, setEmployee] = useState(null);
@@ -85,7 +85,7 @@ export default function EmployeeReport({ employeeId }) {
 
             {employee.photo && (
               <img
-                src={`http://hrms-backend.test/storage/${employee.photo}?t=${Date.now()}`}
+                src={`https://hrms-owyj.onrender.com/storage/${employee.photo}?t=${Date.now()}`}
                 alt="employee"
                 className="hp-report-photo"
               />
@@ -93,7 +93,7 @@ export default function EmployeeReport({ employeeId }) {
 
             {employee.national_id && (
               <img
-                src={`http://hrms-backend.test/storage/${employee.national_id}?t=${Date.now()}`}
+                src={`https://hrms-owyj.onrender.com/storage/${employee.national_id}?t=${Date.now()}`}
                 alt="national id"
                 style={{
                   width: "180px",
@@ -199,7 +199,7 @@ export default function EmployeeReport({ employeeId }) {
         {documents.map((doc, i) => (
           <div key={i}>
             <a
-              href={`http://hrms-backend.test/storage/${doc.file_path}`}
+              href={`https://hrms-owyj.onrender.com/storage/${doc.file_path}`}
               target="_blank"
               rel="noreferrer"
             >
