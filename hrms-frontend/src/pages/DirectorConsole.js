@@ -21,7 +21,7 @@ export default function DirectorConsole() {
       setLoading(true);
       const token = localStorage.getItem("auth_token");
       try {
-        const res = await fetch("https://hrms-owyj.onrender.com/api/employees", {
+        const res = await fetch("http://hrms-backend.test/api/employees", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",

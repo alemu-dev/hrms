@@ -481,3 +481,29 @@
   cursor: not-allowed;
   opacity: 0.6;
 }
+.hp-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+}
+
+.hp-report-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hp-report-right {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hp-report-photo {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+}

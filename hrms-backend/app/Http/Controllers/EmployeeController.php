@@ -11,53 +11,45 @@ use Illuminate\Support\Facades\DB;
 class EmployeeController extends Controller
 {
     /**
-     * Get Stats for the Director Dashboard
+     * ===============================
+     * 📊 DASHBOARD STATS
+     * ===============================
      */
     public function getStats() 
     {
-        // 1. Group by Education Level
         $education = DB::table('employee_education')
             ->select(DB::raw('UPPER(level) as name'), DB::raw('count(*) as value'))
-            ->whereNotNull('level')
-            ->where('level', '!=', '')
             ->groupBy(DB::raw('UPPER(level)'))
             ->get();
 
-        // 2. Group by Department
         $departments = DB::table('employee_profiles')
             ->select('department as name', DB::raw('count(*) as value'))
-            ->whereNotNull('department')
-            ->where('department', '!=', '')
             ->groupBy('department')
             ->get();
 
-        // 3. Group by Gender (Updated to ensure clean names)
         $gender = DB::table('employee_profiles')
             ->select('gender as name', DB::raw('count(*) as value'))
-            ->whereNotNull('gender')
-            ->where('gender', '!=', '')
             ->groupBy('gender')
             ->get();
-
-        // 4. Summary Statistics
-        $totalEmployees = DB::table('employee_profiles')->count();
-        $totalSalary = DB::table('employee_profiles')->sum('salary');
-        $avgSalary = DB::table('employee_profiles')->avg('salary');
 
         return response()->json([
             'education' => $education,
             'departments' => $departments,
             'gender' => $gender,
             'summary' => [
-                'total_staff' => $totalEmployees,
-                'total_budget' => round($totalSalary, 2),
-                'avg_salary' => round($avgSalary, 2),
+                'total_staff' => EmployeeProfile::count(),
+                'total_budget' => round(EmployeeProfile::sum('salary'), 2),
+                'avg_salary' => round(EmployeeProfile::avg('salary'), 2),
                 'active_depts' => $departments->count()
             ]
         ]);
     }
 
-    // List all employees
+    /**
+     * ===============================
+     * 👥 LIST EMPLOYEES
+     * ===============================
+     */
     public function index()
     {
         return response()->json(
@@ -70,20 +62,29 @@ class EmployeeController extends Controller
         );
     }
 
-    // Show single employee
+    /**
+     * ===============================
+     * 🔥 GET SINGLE EMPLOYEE (ONLY ADDITION)
+     * ===============================
+     */
     public function show($id)
     {
-        $employee = EmployeeProfile::with([
-            'user.biography',
-            'user.education',
-            'user.experience',
-            'user.documents'
-        ])->findOrFail($id);
+        $employee = EmployeeProfile::find($id);
+
+        if (!$employee) {
+            return response()->json([
+                'message' => 'Employee not found'
+            ], 404);
+        }
 
         return response()->json($employee);
     }
 
-    // Show employee profile by user_id
+    /**
+     * ===============================
+     * 🔍 FULL EMPLOYEE (BY USER)
+     * ===============================
+     */
     public function showByUser($userId)
     {
         $employee = EmployeeProfile::with([
@@ -98,7 +99,46 @@ class EmployeeController extends Controller
         return response()->json($employee);
     }
 
-    // Create new employee
+    /**
+     * ===============================
+     * 🧾 REPORT
+     * ===============================
+     */
+    public function generateReport($id)
+    {
+        $employee = EmployeeProfile::with([
+            'user.biography',
+            'user.education',
+            'user.experience',
+            'user.documents'
+        ])->findOrFail($id);
+
+        $movements = DB::table('employee_movements')
+            ->where('employee_id', $employee->id)
+            ->orderByDesc('created_at')
+            ->get();
+
+        $leaves = DB::table('leave_requests')
+            ->where('employee_id', $employee->id)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json([
+            'employee' => $employee,
+            'education' => $employee->user->education ?? [],
+            'experience' => $employee->user->experience ?? [],
+            'biography' => $employee->user->biography ?? null,
+            'documents' => $employee->user->documents ?? [],
+            'movements' => $movements,
+            'leaves' => $leaves
+        ]);
+    }
+
+    /**
+     * ===============================
+     * ➕ CREATE EMPLOYEE
+     * ===============================
+     */
     public function store(Request $request)
     {
         $validatedUser = $request->validate([
@@ -112,15 +152,13 @@ class EmployeeController extends Controller
             'department' => 'required|string|max:255',
             'position' => 'required|string|max:255',
             'salary' => 'required|numeric',
-            'gender' => 'required|string', // ✅ Handled
+            'gender' => 'required|string',
             'hire_date' => 'nullable|date',
-            'status' => 'required|string',
-            'phone_number' => 'nullable|string',
-            'address' => 'nullable|string',
-            'date_of_birth' => 'nullable|date',
+            'status' => 'required|string'
         ]);
 
         return DB::transaction(function () use ($validatedUser, $validatedProfile, $request) {
+
             $user = User::create([
                 'name' => $validatedUser['name'],
                 'email' => $validatedUser['email'],
@@ -128,104 +166,135 @@ class EmployeeController extends Controller
                 'role' => 'employee',
             ]);
 
-            $employee = EmployeeProfile::create(array_merge($validatedProfile, [
-                'user_id' => $user->id,
-            ]));
+            // 🔥 decode JSON
+            $education = json_decode($request->education, true) ?? [];
+            $experience = json_decode($request->experience, true) ?? [];
+            $documents = json_decode($request->documents, true) ?? [];
+            $biography = json_decode($request->biography, true) ?? [];
 
-            if ($request->has('education')) {
-                $user->education()->createMany($request->education);
+            $data = [
+                ...$validatedProfile,
+                'user_id' => $user->id
+            ];
+
+            // ✅ PHOTO
+            if ($request->hasFile('photo')) {
+                $data['photo'] = $request->file('photo')->store('photos', 'public');
             }
-            if ($request->has('experience')) {
-                $user->experience()->createMany($request->experience);
+
+            // ✅ NATIONAL ID
+            if ($request->hasFile('national_id')) {
+                $data['national_id'] = $request->file('national_id')->store('ids', 'public');
             }
-            if ($request->has('biography')) {
-                $user->biography()->create(['bio_text' => $request->biography['bio_text'] ?? '']);
-            }
-            if ($request->has('documents')) {
-                $user->documents()->createMany($request->documents);
-            }
+
+            $employee = EmployeeProfile::create($data);
+
+            // RELATIONS
+            $user->education()->createMany($education);
+            $user->experience()->createMany($experience);
+            $user->documents()->createMany($documents);
+
+            $user->biography()->create([
+                'bio_text' => $biography['bio_text'] ?? ''
+            ]);
 
             return response()->json([
                 'message' => 'Employee created successfully',
-                'user' => $user,
                 'employee' => $employee
             ], 201);
         });
     }
 
-    // Update employee
+    /**
+     * ===============================
+     * ✏️ UPDATE EMPLOYEE
+     * ===============================
+     */
     public function update(Request $request, $id)
     {
         $employee = EmployeeProfile::findOrFail($id);
         $user = $employee->user;
 
-        $validatedUser = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|email|unique:users,email,' . $user->id,
-            'password' => 'nullable|string|min:6',
-        ]);
+        return DB::transaction(function () use ($request, $employee, $user) {
 
-        $validatedProfile = $request->validate([
-            'full_name' => 'sometimes|string|max:255',
-            'department' => 'sometimes|string|max:255',
-            'position' => 'sometimes|string|max:255',
-            'salary' => 'sometimes|numeric',
-            'gender' => 'sometimes|string', // ✅ Handled
-            'hire_date' => 'nullable|date',
-            'status' => 'sometimes|string',
-            'phone_number' => 'nullable|string',
-            'address' => 'nullable|string',
-            'date_of_birth' => 'nullable|date',
-        ]);
-
-        return DB::transaction(function () use ($user, $employee, $validatedUser, $validatedProfile, $request) {
             $user->update([
-                'name' => $validatedUser['name'] ?? $user->name,
-                'email' => $validatedUser['email'] ?? $user->email,
-                'password' => !empty($validatedUser['password'])
-                    ? Hash::make($validatedUser['password'])
+                'name' => $request->name ?? $user->name,
+                'email' => $request->email ?? $user->email,
+                'password' => $request->password 
+                    ? Hash::make($request->password) 
                     : $user->password,
             ]);
 
-            $employee->update($validatedProfile);
+            // 🔥 decode JSON
+            $education = json_decode($request->education, true) ?? [];
+            $experience = json_decode($request->experience, true) ?? [];
+            $documents = json_decode($request->documents, true) ?? [];
+            $biography = json_decode($request->biography, true) ?? [];
 
-            if ($request->has('education')) {
-                $user->education()->delete();
-                $user->education()->createMany($request->education);
+            $data = $request->only([
+                'full_name','department','position',
+                'salary','gender','status',
+                'hire_date','phone_number',
+                'address','date_of_birth'
+            ]);
+
+            // ✅ PHOTO UPDATE
+            if ($request->hasFile('photo')) {
+
+                if ($employee->photo && file_exists(storage_path('app/public/' . $employee->photo))) {
+                    unlink(storage_path('app/public/' . $employee->photo));
+                }
+
+                $data['photo'] = $request->file('photo')->store('photos', 'public');
             }
 
-            if ($request->has('experience')) {
-                $user->experience()->delete();
-                $user->experience()->createMany($request->experience);
+            if ($request->hasFile('national_id')) {
+                $data['national_id'] = $request->file('national_id')->store('ids', 'public');
             }
 
-            if ($request->has('biography')) {
-                $user->biography()->updateOrCreate(
-                    ['user_id' => $user->id],
-                    ['bio_text' => $request->biography['bio_text'] ?? '']
-                );
-            }
+            $employee->update($data);
 
-            if ($request->has('documents')) {
-                $user->documents()->delete();
-                $user->documents()->createMany($request->documents);
-            }
+            // RESET RELATIONS
+            $user->education()->delete();
+            $user->education()->createMany($education);
+
+            $user->experience()->delete();
+            $user->experience()->createMany($experience);
+
+            $user->documents()->delete();
+            $user->documents()->createMany($documents);
+
+            $user->biography()->updateOrCreate(
+                ['user_id' => $user->id],
+                ['bio_text' => $biography['bio_text'] ?? '']
+            );
 
             return response()->json([
                 'message' => 'Employee updated successfully',
-                'user' => $user,
-                'employee' => $employee
+                'photo' => $employee->photo
             ]);
         });
     }
 
+    /**
+     * ===============================
+     * ❌ DELETE
+     * ===============================
+     */
     public function destroy($id)
     {
         $employee = EmployeeProfile::findOrFail($id);
-        $user = $employee->user;
 
+        if ($employee->photo && file_exists(storage_path('app/public/' . $employee->photo))) {
+            unlink(storage_path('app/public/' . $employee->photo));
+        }
+
+        if ($employee->national_id && file_exists(storage_path('app/public/' . $employee->national_id))) {
+            unlink(storage_path('app/public/' . $employee->national_id));
+        }
+
+        $employee->user()->delete();
         $employee->delete();
-        $user->delete();
 
         return response()->json([
             'message' => 'Employee deleted successfully'

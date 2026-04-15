@@ -13,7 +13,7 @@ export default function OverviewTab() {
     const token = localStorage.getItem("auth_token");
 
     try {
-      const res = await fetch("https://hrms-owyj.onrender.com/api/overview", {
+      const res = await fetch("http://hrms-backend.test/api/overview", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",

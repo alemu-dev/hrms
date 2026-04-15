@@ -2,278 +2,303 @@ import React, { useState, useEffect } from "react";
 import EmployeeList from "../components/hr/EmployeeList";
 import EmployeeProfile from "../components/hr/EmployeeProfile";
 import EmployeeTabs from "../components/hr/EmployeeTabs";
+import EmployeeMovementForm from "../components/hr/EmployeeMovementForm";
+import EmployeeReport from "../components/hr/EmployeeReport";
 import "../components/hr/HrPortal.css";
 
-const API_BASE = "https://hrms-owyj.onrender.com/api"; 
+const API_BASE = "http://hrms-backend.test/api";
 
 export default function HrPortal() {
   const [activeScreen, setActiveScreen] = useState("dashboard");
   const [activeTab, setActiveTab] = useState("education");
   const [isEditing, setIsEditing] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // For responsive toggle
 
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
-  // Related Tables States
   const [educationList, setEducation] = useState([]);
   const [experienceList, setExperience] = useState([]);
   const [biographyList, setBiography] = useState([]);
   const [documents, setDocuments] = useState([]);
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [reportUserId, setReportUserId] = useState(null);
 
   useEffect(() => {
     loadEmployees();
   }, []);
 
-  // Terminate Session logic
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      localStorage.removeItem("auth_token");
-      localStorage.removeItem("user_data");
-      window.location.reload(); // Refresh to clear state and redirect to login
-    }
-  };
-
+  // ===============================
+  // LOAD EMPLOYEES
+  // ===============================
   const loadEmployees = async () => {
     const token = localStorage.getItem("auth_token");
+
     try {
-      const res = await fetch(`${API_BASE}/employees`, {
-        method: "GET",
+      let res = await fetch(`${API_BASE}/employees`, {
         headers: {
-          "Accept": "application/json",
-          "Authorization": `Bearer ${token}` 
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`
         }
       });
-      const data = await res.json();
+
+      let data = await res.json();
+
+      if (!Array.isArray(data) || data.length === 0) {
+        res = await fetch(`${API_BASE}/employee-profile`, {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`
+          }
+        });
+        data = await res.json();
+      }
+
       setEmployees(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Error loading employees:", err);
+      console.error(err);
     }
   };
 
+  // ===============================
+  // FETCH FULL EMPLOYEE
+  // ===============================
+  const fetchFullEmployee = async (userId) => {
+    const token = localStorage.getItem("auth_token");
+
+    try {
+      const res = await fetch(`${API_BASE}/employee-by-user/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const data = await res.json();
+
+      setSelectedEmployee(data);
+      setEducation(data.user?.education || []);
+      setExperience(data.user?.experience || []);
+      setBiography(
+        data.user?.biography
+          ? [data.user.biography]
+          : [{ bio_text: "" }]
+      );
+      setDocuments(data.user?.documents || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // ===============================
+  // SELECT EMPLOYEE
+  // ===============================
   const handleSelectEmployee = async (emp) => {
-    setIsSidebarOpen(false);
+
+    if (emp?.type === "report") {
+      if (!emp.user_id) {
+        alert("No user_id found!");
+        return;
+      }
+
+      setReportUserId(emp.user_id);
+      setActiveScreen("report");
+      return;
+    }
+
     if (!emp) {
       setSelectedEmployee(null);
       setEducation([]);
       setExperience([]);
-      setBiography([{ bio_text: "" }]); 
+      setBiography([{ bio_text: "" }]);
       setDocuments([]);
-      setIsEditing(true); 
+      setIsEditing(true);
       setActiveScreen("editor");
       return;
     }
 
-    const token = localStorage.getItem("auth_token");
-    try {
-      const res = await fetch(`${API_BASE}/employee-by-user/${emp.user_id}`, {
-        method: "GET",
-        headers: {
-          "Accept": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
-      });
-      const data = await res.json();
-      
-      setSelectedEmployee(data);
-      setEducation(data.user?.education || []);
-      setExperience(data.user?.experience || []);
-      setBiography(data.user?.biography ? [data.user.biography] : [{ bio_text: "" }]);
-      setDocuments(data.user?.documents || []);
-      
-      setIsEditing(false); 
-      setActiveScreen("editor");
-      setActiveTab("education");
-    } catch (err) {
-      console.error("Error fetching full details:", err);
+    if (!emp.user_id) {
+      alert("Employee missing user_id");
+      return;
     }
+
+    await fetchFullEmployee(emp.user_id);
+    setIsEditing(false);
+    setActiveScreen("editor");
   };
 
-  const handleGlobalSave = async (profileData) => {
-    if (!window.confirm("Save all changes to the database?")) return;
+  // ===============================
+  // ✅ FIXED SAVE (FORMDATA)
+  // ===============================
+  const handleGlobalSave = async (formData) => {
+    if (!window.confirm("Save all changes?")) return;
 
-    const isUpdate = !!selectedEmployee?.id;
     const token = localStorage.getItem("auth_token");
+    const isUpdate = !!selectedEmployee?.id;
 
-    const cleanEducation = educationList.map(({ id, user_id, created_at, updated_at, ...rest }) => ({
-        level: rest.level || "",
-        field: rest.field || "",
-        institution: rest.institution || "",
-        start_date: rest.start_date || null,
-        end_date: rest.end_date || null,
-        notes: rest.notes || ""
-    }));
+    // 🔥 attach extra data
+    formData.append("name", formData.get("full_name"));
+    formData.append("education", JSON.stringify(educationList));
+    formData.append("experience", JSON.stringify(experienceList));
+    formData.append("biography", JSON.stringify(biographyList[0] || {}));
+    formData.append("documents", JSON.stringify(documents || []));
 
-    const cleanExperience = experienceList.map(({ id, user_id, created_at, updated_at, ...rest }) => ({
-        company: rest.company || "",
-        role: rest.role || "",
-        start_date: rest.start_date || null,
-        end_date: rest.end_date || null,
-        responsibilities: rest.responsibilities || ""
-    }));
-
-    const payload = {
-      ...profileData,
-      name: profileData.full_name || profileData.name, 
-      full_name: profileData.full_name || profileData.name, 
-      education: cleanEducation,
-      experience: cleanExperience,
-      biography: biographyList[0] || { bio_text: "" },
-      documents: documents || []
-    };
-
-    if (!isUpdate && !payload.password) {
-       payload.password = "password123"; 
+    // default password for new
+    if (!isUpdate && !formData.get("password")) {
+      formData.append("password", "password123");
     }
 
-    const url = isUpdate 
-      ? `${API_BASE}/employees/${selectedEmployee.id}` 
+    // 🔥 Laravel PUT fix
+    if (isUpdate) {
+      formData.append("_method", "PUT");
+    }
+
+    const url = isUpdate
+      ? `${API_BASE}/employees/${selectedEmployee.id}`
       : `${API_BASE}/employees`;
 
     try {
       const res = await fetch(url, {
-        method: isUpdate ? "PUT" : "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const responseData = await res.json();
-
-      if (res.ok) {
-        alert(isUpdate ? "Updated Successfully! ✅" : "Registered Successfully! ✅");
-        setIsEditing(false);
-        await loadEmployees(); 
-        setActiveScreen("list");
-      } else {
-        const errorDetails = responseData.errors 
-          ? Object.values(responseData.errors).flat().join("\n")
-          : responseData.message;
-        alert(`Validation Error:\n${errorDetails}`);
-      }
-    } catch (err) {
-      alert("Network error: Check your connection.");
-    }
-  };
-  
-  const handleGlobalDelete = async (id) => {
-    if (!id || !window.confirm("Delete this employee record permanently?")) return;
-    const token = localStorage.getItem("auth_token");
-    try {
-      const res = await fetch(`${API_BASE}/employees/${id}`, { 
-        method: "DELETE",
+        method: "POST", // 🔥 ALWAYS POST for FormData
         headers: {
-          "Accept": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`
+          // ❌ DO NOT SET Content-Type
+        },
+        body: formData
       });
+
+      const data = await res.json();
+      console.log("SERVER RESPONSE:", data);
+
       if (res.ok) {
+        alert("✅ Saved with photo!");
+        setIsEditing(false);
         loadEmployees();
         setActiveScreen("list");
+      } else {
+        alert("❌ Save failed");
       }
     } catch (err) {
-      console.error("Delete error:", err);
+      console.error(err);
     }
+  };
+
+  // ===============================
+  // DELETE
+  // ===============================
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete?")) return;
+
+    const token = localStorage.getItem("auth_token");
+
+    await fetch(`${API_BASE}/employees/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    loadEmployees();
+    setActiveScreen("list");
+  };
+
+  // ===============================
+  // LOGOUT
+  // ===============================
+  const handleLogout = () => {
+    localStorage.removeItem("auth_token");
+    window.location.reload();
   };
 
   return (
     <div className="hp-dashboard-layout">
-      {/* Mobile Header */}
-      <header className="hp-mobile-header">
-        <div className="hp-logo-small">HRMS PRO</div>
-        <button className="hp-menu-toggle" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-          {isSidebarOpen ? "✕" : "⋮"} 
-        </button>
-      </header>
 
-      {/* Sidebar with Logout */}
-      <aside className={`hp-sidebar ${isSidebarOpen ? "hp-sidebar-open" : ""}`}>
-        <div className="hp-sidebar-header">
-            <div className="hp-logo">HRMS PRO</div>
-            <button className="hp-close-sidebar" onClick={() => setIsSidebarOpen(false)}>✕</button>
-        </div>
-        <nav className="hp-nav">
-          <button className={`hp-nav-link ${activeScreen === "dashboard" ? "active" : ""}`} onClick={() => { setActiveScreen("dashboard"); setIsSidebarOpen(false); }}>🏠 Dashboard</button>
-          <button className={`hp-nav-link ${activeScreen === "list" ? "active" : ""}`} onClick={() => { setActiveScreen("list"); setIsSidebarOpen(false); }}>👥 Employee List</button>
-          <button className="hp-nav-link hp-btn-add-nav" onClick={() => handleSelectEmployee(null)}>➕ Add New Staff</button>
-          
-          {/* Logout Button */}
-          <button className="hp-nav-link" style={{ marginTop: 'auto', color: '#ef4444' }} onClick={handleLogout}>
-            🚪 Logout
-          </button>
-        </nav>
+      {/* SIDEBAR */}
+      <aside className="hp-sidebar">
+        <button onClick={() => setActiveScreen("dashboard")}>🏠 Dashboard</button>
+        <button onClick={() => setActiveScreen("list")}>👥 Employee List</button>
+        <button onClick={() => setActiveScreen("movement")}>📈 Movement</button>
+        <button onClick={() => handleSelectEmployee(null)}>➕ Add Staff</button>
+        <button onClick={handleLogout}>🚪 Logout</button>
       </aside>
 
-      {isSidebarOpen && <div className="hp-overlay" onClick={() => setIsSidebarOpen(false)}></div>}
-
+      {/* MAIN */}
       <main className="hp-main-content">
+
         {activeScreen === "dashboard" && (
-          <div className="hp-dashboard-home">
-            <div className="hp-intro-card">
-              <h1>HR Management</h1>
-              <p>Total Records: <strong>{employees.length}</strong></p>
-            </div>
-            <div className="hp-stats-grid">
-               <div className="hp-stat-card">
-                  <h4 className="hp-stat-label">Active</h4>
-                  <h2 className="hp-stat-value hp-color-green">{employees.filter(e => e.status === 'active').length}</h2>
-               </div>
-               <div className="hp-stat-card">
-                  <h4 className="hp-stat-label">On Leave</h4>
-                  <h2 className="hp-stat-value hp-color-orange">{employees.filter(e => e.status === 'on-leave').length}</h2>
-               </div>
-               <div className="hp-stat-card">
-                  <h4 className="hp-stat-label">Departments</h4>
-                  <h2 className="hp-stat-value hp-color-blue">{[...new Set(employees.map(e => e.department))].length}</h2>
-               </div>
-            </div>
+          <div>
+            <h1>HR Dashboard</h1>
+            <p>Total Employees: {employees.length}</p>
           </div>
         )}
 
         {activeScreen === "list" && (
-          <EmployeeList 
-            employees={employees} 
-            openProfile={handleSelectEmployee} 
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm} 
-            currentPage={currentPage}
-            setCurrentPage={setCurrentPage}
+          <EmployeeList
+            employees={employees}
+            openProfile={handleSelectEmployee}
           />
         )}
 
         {activeScreen === "editor" && (
-          <div className="hp-editor-view">
-            <button className="hp-btn-back" onClick={() => setActiveScreen("list")}>← Back to List</button>
-            <div className="hp-editor-layout">
-              <EmployeeProfile 
-                employee={selectedEmployee} 
-                isEditing={isEditing}
-                setIsEditing={setIsEditing} 
-                onSave={handleGlobalSave} 
-                onDelete={handleGlobalDelete} 
-              />
-              <EmployeeTabs 
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-                isEditing={isEditing} 
-                educationList={educationList}
-                experienceList={experienceList}
-                biographyList={biographyList}
-                documents={documents}
-                setEducation={setEducation}
-                setExperience={setExperience}
-                setBiography={setBiography}
-                setDocuments={setDocuments}
-              />
-            </div>
-          </div>
+          <>
+            <button onClick={() => setActiveScreen("list")}>← Back</button>
+
+            <EmployeeProfile
+              employee={selectedEmployee}
+              isEditing={isEditing}
+              setIsEditing={setIsEditing}
+              onSave={handleGlobalSave}
+              onDelete={handleDelete}
+            />
+
+            <EmployeeTabs
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              isEditing={isEditing}
+              educationList={educationList}
+              experienceList={experienceList}
+              biographyList={biographyList}
+              documents={documents}
+              setEducation={setEducation}
+              setExperience={setExperience}
+              setBiography={setBiography}
+              setDocuments={setDocuments}
+            />
+
+            <button
+              onClick={() => {
+                if (!selectedEmployee?.user_id) {
+                  alert("No employee selected");
+                  return;
+                }
+
+                setReportUserId(selectedEmployee.user_id);
+                setActiveScreen("report");
+              }}
+              className="hp-btn-save-main"
+            >
+              📄 View Report
+            </button>
+
+            <button
+              onClick={() => setActiveScreen("movement")}
+              className="hp-btn-edit-main"
+            >
+              ➕ Add Movement
+            </button>
+          </>
         )}
+
+        {activeScreen === "movement" && (
+          <EmployeeMovementForm employee={selectedEmployee} />
+        )}
+
+        {activeScreen === "report" && (
+          <>
+            <button onClick={() => setActiveScreen("list")}>← Back</button>
+
+            {!reportUserId ? (
+              <p>⚠️ No employee selected for report</p>
+            ) : (
+              <EmployeeReport employeeId={reportUserId} />
+            )}
+          </>
+        )}
+
       </main>
     </div>
   );

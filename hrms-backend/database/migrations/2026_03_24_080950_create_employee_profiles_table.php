@@ -15,16 +15,22 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->string('full_name');
-            // Adding gender here. We make it nullable so old records stay safe.
             $table->string('gender')->nullable(); 
             $table->string('department')->nullable();
+            
+            // Define position first
             $table->string('position')->nullable();
+            
+            // Order them logically here; ->after() is removed because it's not used in Schema::create
+            $table->string('position_number')->nullable();
+            $table->string('grade')->nullable();
+            $table->integer('step')->nullable();
+            
             $table->decimal('salary', 10, 2)->nullable();
             $table->date('hire_date')->nullable();
             $table->string('status')->default('active');
             $table->string('phone_number')->nullable();
             $table->string('address')->nullable();
-            $table->date('date_of_birth')->nullable();
             $table->timestamps();
         });
     }

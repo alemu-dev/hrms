@@ -9,23 +9,59 @@ class EmployeeProfile extends Model
 {
     use HasFactory;
 
+    protected $table = 'employee_profiles'; // ✅ IMPORTANT (your table name)
+
     protected $fillable = [
         'user_id',
         'full_name',
         'department',
         'position',
-        'gender' ,
+        'position_number',
+        'grade',
+        'step',
+        'gender',
         'salary',
         'hire_date',
         'status',
         'phone_number',
         'address',
-        'date_of_birth',
+
+        // 🔥 NEW FIELDS
+        'photo',
+        'national_id'
     ];
 
-    // Relationship: each employee profile belongs to one user
+    /**
+     * ===============================
+     * 🔗 RELATIONSHIP
+     * ===============================
+     */
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * ===============================
+     * 🖼 GET PHOTO URL
+     * ===============================
+     */
+    public function getPhotoUrlAttribute()
+    {
+        return $this->photo 
+            ? url('storage/' . $this->photo) 
+            : null;
+    }
+
+    /**
+     * ===============================
+     * 🆔 GET NATIONAL ID URL
+     * ===============================
+     */
+    public function getNationalIdUrlAttribute()
+    {
+        return $this->national_id 
+            ? url('storage/' . $this->national_id) 
+            : null;
     }
 }

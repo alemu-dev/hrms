@@ -11,7 +11,7 @@ export default function LeavesTab({ employees }) {
     async function loadLeaves() {
       const token = localStorage.getItem("auth_token");
       try {
-        const res = await fetch("https://hrms-owyj.onrender.com/api/leave-requests", {
+        const res = await fetch("http://hrms-backend.test/api/leave-requests", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -40,7 +40,7 @@ export default function LeavesTab({ employees }) {
         for (const emp of employees) {
           if (!emp.user_id) continue;
           try {
-            const res = await fetch(`https://hrms-owyj.onrender.com/api/leave-requests/${emp.user_id}`, {
+            const res = await fetch(`http://hrms-backend.test/api/leave-requests/${emp.user_id}`, {
               headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await res.json();
@@ -62,7 +62,7 @@ export default function LeavesTab({ employees }) {
 
     const token = localStorage.getItem("auth_token");
     try {
-      const res = await fetch(`https://hrms-owyj.onrender.com/api/leave-requests/${id}`, {
+      const res = await fetch(`http://hrms-backend.test/api/leave-requests/${id}`, {
         method: "PATCH",
         headers: { 
           "Content-Type": "application/json",
