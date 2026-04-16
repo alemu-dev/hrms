@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./HrPortal.css";
-import logo from "./stica.png"; // ✅ your logo
+import logo from "./stica.png";
 
 const API_BASE = "https://hrms-owyj.onrender.com/api";
 
@@ -16,6 +16,9 @@ export default function EmployeeReport({ employeeId }) {
     if (employeeId) loadReport();
   }, [employeeId]);
 
+  /* ===========================
+      LOAD DATA FROM API
+  ============================ */
   const loadReport = async () => {
     const token = localStorage.getItem("auth_token");
 
@@ -34,14 +37,11 @@ export default function EmployeeReport({ employeeId }) {
 
       const moveRes = await fetch(
         `${API_BASE}/movements?employee_id=${data.id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       const moveData = await moveRes.json();
       setMovements(Array.isArray(moveData) ? moveData : []);
-
     } catch (err) {
       console.error(err);
     }
@@ -52,55 +52,42 @@ export default function EmployeeReport({ employeeId }) {
   return (
     <div className="hp-report">
 
-      {/* ✅ PROFESSIONAL HEADER */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        
-        {/* ✅ LOGO */}
-        <img src={logo} alt="logo" style={{ width: "80px" }} />
+      {/* ===========================
+          HEADER
+      ============================ */}
+      <div className="hp-report-header">
+        <img src={logo} alt="logo" style={{ width: "80px", marginBottom: "10px" }} />
 
-        {/* ✅ ORGANIZATION NAME */}
-        <div style={{ textAlign: "center", flex: 1 }}>
-          <h2>Benishangul Gumuz Regional State</h2>
-          <h3 style={{ margin: 0 }}>Science and Technology Innovation Agency</h3>
-          <p>Human Resource Management Directorate</p>
-          <p><strong>Employee Profile Report</strong></p>
-        </div>
+        <h2>Benishangul Gumuz Regional State</h2>
+        <h3>Science and Technology Innovation Agency</h3>
+        <p>Human Resource Management Directorate</p>
+        <p><strong>Employee Profile Report</strong></p>
 
-        {/* ✅ DATE */}
-        <div style={{ textAlign: "right" }}>
-          <p>{new Date().toLocaleDateString()}</p>
-        </div>
-
+        <p style={{ textAlign: "right" }}>
+          {new Date().toLocaleDateString()}
+        </p>
       </div>
 
       <hr />
 
-      {/* IDENTIFICATION */}
+      {/* ===========================
+          IDENTIFICATION SECTION
+      ============================ */}
       <section className="hp-report-section">
         <h3>Employee Identification</h3>
 
         <div className="hp-grid-2">
 
+          {/* ===========================
+              LEFT SIDE (PHOTO + BASIC INFO)
+          ============================ */}
           <div className="hp-report-left">
-
+            {/* LEFT: EMPLOYEE PHOTO */}
             {employee.photo && (
               <img
                 src={`https://hrms-owyj.onrender.com/storage/${employee.photo}?t=${Date.now()}`}
                 alt="employee"
-                className="hp-report-photo"
-              />
-            )}
-
-            {employee.national_id && (
-              <img
-                src={`https://hrms-owyj.onrender.com/storage/${employee.national_id}?t=${Date.now()}`}
-                alt="national id"
-                style={{
-                  width: "180px",
-                  marginTop: "10px",
-                  objectFit: "contain",
-                  border: "1px solid #000"
-                }}
+                className="hp-photo"
               />
             )}
 
@@ -108,29 +95,42 @@ export default function EmployeeReport({ employeeId }) {
             <p><strong>Email:</strong> {employee.user?.email || "—"}</p>
             <p><strong>Department:</strong> {employee.department || "—"}</p>
             <p><strong>Status:</strong> {employee.status || "—"}</p>
-
           </div>
 
+          {/* ===========================
+              RIGHT SIDE (ID CARD + JOB INFO)
+          ============================ */}
           <div className="hp-report-right">
+            {/* RIGHT: NATIONAL ID */}
+            {employee.national_id && (
+              <img
+                src={`https://hrms-owyj.onrender.com/storage/${employee.national_id}?t=${Date.now()}`}
+                alt="national id"
+                className="hp-id-card-right"
+              />
+            )}
 
             <p><strong>Position:</strong> {employee.position || "—"}</p>
             <p><strong>Position No:</strong> {employee.position_number || "—"}</p>
             <p><strong>Grade / Step:</strong> {employee.grade || "—"} / {employee.step || "—"}</p>
             <p><strong>Hire Date:</strong> {employee.hire_date || "—"}</p>
             <p><strong>Salary:</strong> {employee.salary || "—"} ETB</p>
-
           </div>
 
         </div>
       </section>
 
-      {/* BIOGRAPHY */}
+      {/* ===========================
+          BIOGRAPHY
+      ============================ */}
       <section className="hp-report-section">
         <h3>Biography</h3>
         <p>{biography?.bio_text || "No biography available"}</p>
       </section>
 
-      {/* EDUCATION */}
+      {/* ===========================
+          EDUCATION
+      ============================ */}
       <section className="hp-report-section">
         <h3>Education</h3>
 
@@ -147,7 +147,9 @@ export default function EmployeeReport({ employeeId }) {
         ))}
       </section>
 
-      {/* EXPERIENCE */}
+      {/* ===========================
+          EXPERIENCE
+      ============================ */}
       <section className="hp-report-section">
         <h3>Work Experience</h3>
 
@@ -162,7 +164,9 @@ export default function EmployeeReport({ employeeId }) {
         ))}
       </section>
 
-      {/* MOVEMENTS */}
+      {/* ===========================
+          MOVEMENTS
+      ============================ */}
       <section className="hp-report-section">
         <h3>Employee Movements</h3>
 
@@ -190,7 +194,9 @@ export default function EmployeeReport({ employeeId }) {
         )}
       </section>
 
-      {/* DOCUMENTS */}
+      {/* ===========================
+          DOCUMENTS
+      ============================ */}
       <section className="hp-report-section">
         <h3>Documents</h3>
 
@@ -209,24 +215,18 @@ export default function EmployeeReport({ employeeId }) {
         ))}
       </section>
 
-      {/* FOOTER */}
-      <div className="hp-report-footer">
-        <hr />
+      {/* ===========================
+          FOOTER (SIGNATURES)
+      ============================ */}
+      <div className="hp-signatures">
+        <div>
+          <p>__________________________</p>
+          <p>HR Officer Signature</p>
+        </div>
 
-        <p>Generated by HRMS • {new Date().toLocaleDateString()}</p>
-
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "60px" }}>
-          
-          <div>
-            <p>__________________________</p>
-            <p>HR Officer Signature</p>
-          </div>
-
-          <div>
-            <p>__________________________</p>
-            <p>Authorized Signature</p>
-          </div>
-
+        <div>
+          <p>__________________________</p>
+          <p>Authorized Signature</p>
         </div>
       </div>
 

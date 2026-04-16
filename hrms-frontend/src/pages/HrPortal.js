@@ -6,6 +6,12 @@ import EmployeeMovementForm from "../components/hr/EmployeeMovementForm";
 import EmployeeReport from "../components/hr/EmployeeReport";
 import "../components/hr/HrPortal.css";
 
+import {
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  LineChart, Line, AreaChart, Area
+} from "recharts";
+
 const API_BASE = "https://hrms-owyj.onrender.com/api";
 
 export default function HrPortal() {
@@ -23,13 +29,12 @@ export default function HrPortal() {
 
   const [reportUserId, setReportUserId] = useState(null);
 
+  const [chartStyle, setChartStyle] = useState("bar");
+
   useEffect(() => {
     loadEmployees();
   }, []);
 
-  // ===============================
-  // LOAD EMPLOYEES
-  // ===============================
   const loadEmployees = async () => {
     const token = localStorage.getItem("auth_token");
 
@@ -59,9 +64,6 @@ export default function HrPortal() {
     }
   };
 
-  // ===============================
-  // FETCH FULL EMPLOYEE
-  // ===============================
   const fetchFullEmployee = async (userId) => {
     const token = localStorage.getItem("auth_token");
 
@@ -86,17 +88,9 @@ export default function HrPortal() {
     }
   };
 
-  // ===============================
-  // SELECT EMPLOYEE
-  // ===============================
   const handleSelectEmployee = async (emp) => {
-
     if (emp?.type === "report") {
-      if (!emp.user_id) {
-        alert("No user_id found!");
-        return;
-      }
-
+      if (!emp.user_id) return alert("No user_id found!");
       setReportUserId(emp.user_id);
       setActiveScreen("report");
       return;
@@ -113,48 +107,37 @@ export default function HrPortal() {
       return;
     }
 
-    if (!emp.user_id) {
-      alert("Employee missing user_id");
-      return;
-    }
+    if (!emp.user_id) return alert("Employee missing user_id");
 
     await fetchFullEmployee(emp.user_id);
     setIsEditing(false);
     setActiveScreen("editor");
   };
 
-  // ===============================
-  // ✅ FIXED SAVE (FORMDATA)
-  // ===============================
   const handleGlobalSave = async (formData) => {
     if (!window.confirm("Save all changes?")) return;
 
     const token = localStorage.getItem("auth_token");
+    const isUpdate = !!selectedEmployee;
 
-    // 🔥 FIXED HERE
-    const isUpdate = selectedEmployee !== null;
+    const fullName = formData.get("full_name") || "";
+    const email = formData.get("email") || "";
 
-    // 🔥 attach extra data
-    formData.append("name", formData.get("full_name") || "");
-    formData.append("education", JSON.stringify(educationList));
-    formData.append("experience", JSON.stringify(experienceList));
-    formData.append("biography", JSON.stringify(biographyList[0] || {}));
-    formData.append("documents", JSON.stringify(documents || []));
+    if (!fullName.trim()) return alert("Full name is required");
+    if (!email.trim()) return alert("Email is required");
 
-    // 🔥 ensure email exists (IMPORTANT)
-    if (!formData.get("email")) {
-      alert("Email is required");
-      return;
-    }
+    formData.set("name", fullName);
+    formData.set("education", JSON.stringify(educationList));
+    formData.set("experience", JSON.stringify(experienceList));
+    formData.set("biography", JSON.stringify(biographyList[0] || { bio_text: "" }));
+    formData.set("documents", JSON.stringify(documents || []));
 
-    // default password for new
     if (!isUpdate && !formData.get("password")) {
-      formData.append("password", "password123");
+      formData.set("password", "password123");
     }
 
-    // 🔥 Laravel PUT fix
     if (isUpdate && selectedEmployee?.id) {
-      formData.append("_method", "PUT");
+      formData.set("_method", "PUT");
     }
 
     const url = isUpdate
@@ -164,17 +147,14 @@ export default function HrPortal() {
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: formData
       });
 
       const data = await res.json();
-      console.log("SERVER RESPONSE:", data);
 
       if (res.ok) {
-        alert("✅ Saved with photo!");
+        alert("✅ Saved successfully!");
         setIsEditing(false);
         loadEmployees();
         setActiveScreen("list");
@@ -186,11 +166,9 @@ export default function HrPortal() {
     }
   };
 
-  // ===============================
-  // DELETE
-  // ===============================
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete?")) return;
+    if (!window.confirm("Are you sure you want to DELETE this employee?"))
+      return;
 
     const token = localStorage.getItem("auth_token");
 
@@ -203,46 +181,156 @@ export default function HrPortal() {
     setActiveScreen("list");
   };
 
-  // ===============================
-  // LOGOUT
-  // ===============================
   const handleLogout = () => {
+    if (!window.confirm("Are you sure you want to logout?")) return;
     localStorage.removeItem("auth_token");
     window.location.reload();
+  };
+
+  // ✅ CLEAN DATA FORMATTER
+  const formatData = (metric) => {
+    const counts = {};
+
+    employees.forEach(emp => {
+      let key = "Unknown";
+
+      if (metric === "salary") {
+        const s = parseFloat(emp.salary);
+        if (isNaN(s)) key = "Unknown";
+        else if (s < 15000) key = "0-15k";
+        else if (s < 30000) key = "15k-30k";
+        else if (s < 50000) key = "30k-50k";
+        else key = "50k+";
+      }
+      else if (metric === "education") {
+        key = emp.user?.education?.[0]?.level || "Unknown";
+      }
+      else {
+        key = emp[metric] || "Unknown";
+      }
+
+      key = key.toString().toUpperCase(); // ✅ FIX duplicate labels
+
+      counts[key] = (counts[key] || 0) + 1;
+    });
+
+    return Object.keys(counts).map(k => ({
+      name: k,
+      value: counts[k]
+    }));
+  };
+
+  const COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626"];
+
+  const Chart = ({ title, metric }) => {
+    const data = formatData(metric);
+
+    return (
+      <div className="hp-card">
+        <h3>{title}</h3>
+
+        <ResponsiveContainer width="100%" height={250}>
+          {chartStyle === "pie" ? (
+            <PieChart>
+              <Pie data={data} dataKey="value" label>
+                {data.map((_, i) => (
+                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          ) : chartStyle === "line" ? (
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Line dataKey="value" stroke="#2563eb" strokeWidth={2} />
+            </LineChart>
+          ) : chartStyle === "area" ? (
+            <AreaChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Area dataKey="value" fill="#93c5fd" />
+            </AreaChart>
+          ) : (
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Bar dataKey="value" fill="#2563eb" />
+            </BarChart>
+          )}
+        </ResponsiveContainer>
+      </div>
+    );
   };
 
   return (
     <div className="hp-dashboard-layout">
 
-      {/* SIDEBAR */}
       <aside className="hp-sidebar">
         <button onClick={() => setActiveScreen("dashboard")}>🏠 Dashboard</button>
         <button onClick={() => setActiveScreen("list")}>👥 Employee List</button>
         <button onClick={() => setActiveScreen("movement")}>📈 Movement</button>
         <button onClick={() => handleSelectEmployee(null)}>➕ Add Staff</button>
-        <button onClick={handleLogout}>🚪 Logout</button>
+        <button onClick={handleLogout} className="hp-btn-delete">🚪 Logout</button>
       </aside>
 
-      {/* MAIN */}
       <main className="hp-main-content">
 
         {activeScreen === "dashboard" && (
-          <div>
-            <h1>HR Dashboard</h1>
-            <p>Total Employees: {employees.length}</p>
-          </div>
+          <>
+            <div className="hp-card">
+              <h1>About the Organization</h1>
+              <p>
+                This HR system supports employee lifecycle, planning, and analytics.
+              </p>
+
+              <div className="hp-grid-2" style={{ marginTop: 20 }}>
+                <div className="hp-card">
+                  <h3>Total Employees</h3>
+                  <h2>{employees.length}</h2>
+                </div>
+
+                <div className="hp-card">
+                  <h3>Departments</h3>
+                  <h2>{[...new Set(employees.map(e => e.department))].length}</h2>
+                </div>
+              </div>
+            </div>
+
+            <div className="hp-card">
+              <label>Select Chart Type: </label>
+              <select value={chartStyle} onChange={e => setChartStyle(e.target.value)}>
+                <option value="bar">Bar</option>
+                <option value="pie">Pie</option>
+                <option value="line">Line</option>
+                <option value="area">Area</option>
+              </select>
+            </div>
+
+            <div className="hp-grid-2">
+              <Chart title="By Department" metric="department" />
+              <Chart title="Gender Distribution" metric="gender" />
+              <Chart title="Salary Distribution" metric="salary" />
+              <Chart title="Education Level" metric="education" />
+            </div>
+          </>
         )}
 
         {activeScreen === "list" && (
-          <EmployeeList
-            employees={employees}
-            openProfile={handleSelectEmployee}
-          />
+          <EmployeeList employees={employees} openProfile={handleSelectEmployee} />
         )}
 
         {activeScreen === "editor" && (
-          <>
-            <button onClick={() => setActiveScreen("list")}>← Back</button>
+          <div className="hp-card">
+            <button className="hp-btn hp-btn-view" onClick={() => setActiveScreen("list")}>
+              ← Back
+            </button>
 
             <EmployeeProfile
               employee={selectedEmployee}
@@ -265,29 +353,7 @@ export default function HrPortal() {
               setBiography={setBiography}
               setDocuments={setDocuments}
             />
-
-            <button
-              onClick={() => {
-                if (!selectedEmployee?.user_id) {
-                  alert("No employee selected");
-                  return;
-                }
-
-                setReportUserId(selectedEmployee.user_id);
-                setActiveScreen("report");
-              }}
-              className="hp-btn-save-main"
-            >
-              📄 View Report
-            </button>
-
-            <button
-              onClick={() => setActiveScreen("movement")}
-              className="hp-btn-edit-main"
-            >
-              ➕ Add Movement
-            </button>
-          </>
+          </div>
         )}
 
         {activeScreen === "movement" && (
@@ -295,15 +361,17 @@ export default function HrPortal() {
         )}
 
         {activeScreen === "report" && (
-          <>
-            <button onClick={() => setActiveScreen("list")}>← Back</button>
+          <div className="hp-card">
+            <button className="hp-btn hp-btn-view" onClick={() => setActiveScreen("list")}>
+              ← Back
+            </button>
 
             {!reportUserId ? (
-              <p>⚠️ No employee selected for report</p>
+              <p>No employee selected</p>
             ) : (
               <EmployeeReport employeeId={reportUserId} />
             )}
-          </>
+          </div>
         )}
 
       </main>

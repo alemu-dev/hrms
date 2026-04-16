@@ -1,5 +1,5 @@
 /* =========================================
-   HRMS PORTAL - MODERN ENTERPRISE UI + REPORT
+   HRMS PORTAL - CLEAN PROFESSIONAL UI
 ========================================= */
 
 /* ===========================
@@ -13,21 +13,13 @@
   --hp-border: rgba(15, 23, 42, 0.12);
 
   --hp-primary: #2563eb;
-  --hp-danger: #ef4444;
-  --hp-success: #22c55e;
-  --hp-warning: #f59e0b;
+  --hp-danger: #dc2626;
 
   --hp-radius: 14px;
-
   --hp-shadow: 0 10px 30px rgba(2, 6, 23, 0.08);
-  --hp-shadow-soft: 0 4px 14px rgba(2, 6, 23, 0.05);
-
-  --hp-focus: 0 0 0 3px rgba(37, 99, 235, 0.2);
 }
 
-/* ===========================
-   RESET
-=========================== */
+/* =========================== */
 *{ box-sizing: border-box; }
 
 body{
@@ -38,7 +30,7 @@ body{
 }
 
 /* ===========================
-   LAYOUT
+   DASHBOARD LAYOUT
 =========================== */
 .hp-dashboard-layout{
   display: grid;
@@ -51,37 +43,32 @@ body{
    SIDEBAR
 =========================== */
 .hp-sidebar{
-  background: #ffffff;
+  background: #0f172a;
   border-radius: var(--hp-radius);
-  box-shadow: var(--hp-shadow-soft);
   padding: 15px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-/* 🔥 TEXT-ONLY BUTTON STYLE */
 .hp-sidebar button{
   padding: 12px;
   border-radius: 10px;
-  border: 1px solid var(--hp-border);
-  background: #fff;
-  color: var(--hp-text);
+  border: none;
+  background: rgba(255,255,255,0.05);
+  color: #e2e8f0;
   cursor: pointer;
   font-weight: 600;
   text-align: left;
-  transition: all .2s ease;
 }
 
 .hp-sidebar button:hover{
-  color: var(--hp-primary);
-  border-color: var(--hp-primary);
-  background: #f8fafc;
-  transform: translateX(4px);
+  background: var(--hp-primary);
+  color: white;
 }
 
 /* ===========================
-   MAIN
+   MAIN CONTENT
 =========================== */
 .hp-main-content{
   display: flex;
@@ -90,7 +77,7 @@ body{
 }
 
 /* ===========================
-   CARDS
+   CARD
 =========================== */
 .hp-card{
   background: var(--hp-surface);
@@ -100,54 +87,17 @@ body{
 }
 
 /* ===========================
-   BUTTONS (TEXT-STYLE)
-=========================== */
-.hp-btn-save-main,
-.hp-btn-edit-main{
-  background: #fff;
-  border: 1px solid var(--hp-border);
-  padding: 12px 14px;
-  border-radius: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all .2s ease;
-}
-
-/* PRIMARY (Save) */
-.hp-btn-save-main{
-  color: var(--hp-primary);
-}
-
-.hp-btn-save-main:hover{
-  border-color: var(--hp-primary);
-  background: rgba(37, 99, 235, 0.05);
-}
-
-/* INFO (Edit) */
-.hp-btn-edit-main{
-  color: #0ea5e9;
-}
-
-.hp-btn-edit-main:hover{
-  border-color: #0ea5e9;
-  background: rgba(14, 165, 233, 0.05);
-}
-
-/* ===========================
    TABLE
 =========================== */
 .hp-table{
   width: 100%;
   border-collapse: collapse;
-  margin-top: 10px;
 }
 
 .hp-table th{
-  text-align: left;
   padding: 12px;
   background: #f1f5f9;
-  font-weight: 700;
-  font-size: 14px;
+  text-align: left;
 }
 
 .hp-table td{
@@ -155,149 +105,106 @@ body{
   border-bottom: 1px solid #e2e8f0;
 }
 
-/* ===========================
-   FORM INPUTS
-=========================== */
-.hp-form-input{
-  border: 1px solid var(--hp-border);
-  border-radius: 10px;
-  padding: 10px;
-  outline: none;
-}
-
-.hp-form-input:focus{
-  box-shadow: var(--hp-focus);
-}
-
-/* ===========================
-   GRID
-=========================== */
-.hp-grid-2{
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-}
-
-/* ===========================
-   TABS
-=========================== */
-.hp-tabs-nav{
-  display: flex;
-  gap: 10px;
-}
-
-.hp-tabs-nav button{
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--hp-border);
-  background: #fff;
-  cursor: pointer;
-}
-
-.hp-tabs-nav button.active{
-  border-color: var(--hp-primary);
-  color: var(--hp-primary);
-  background: rgba(37, 99, 235, 0.05);
-}
-
-/* ===========================
-   DATA CARD
-=========================== */
-.hp-data-card{
-  border: 1px solid var(--hp-border);
-  border-radius: 10px;
-  padding: 12px;
-}
-
 /* =========================================
-   🔥 PROFESSIONAL REPORT
+   REPORT (MAIN DOCUMENT)
 ========================================= */
 
 .hp-report{
   background: white;
-  max-width: 900px;
-  margin: auto;
-  padding: 40px;
-  box-shadow: 0 0 0 1px #ddd;
+  max-width: 820px;
+  margin: 40px auto;
+  padding: 40px 50px;
   font-family: "Times New Roman", serif;
+  color: #000;
+  line-height: 1.6;
 }
 
-/* HEADER */
+/* ===========================
+   HEADER
+=========================== */
 .hp-report-header{
   text-align: center;
+}
+
+/* =========================== */
+.hp-report hr{
+  border-top: 1px solid black;
+  margin: 15px 0;
+}
+
+/* ===========================
+   SECTION
+=========================== */
+.hp-report-section{
   margin-bottom: 20px;
 }
 
-.hp-report-header h2{
-  margin: 0;
-  font-size: 20px;
-  font-weight: 800;
+.hp-report-section h3{
+  font-size: 14px;
+  text-decoration: underline;
+  margin-bottom: 10px;
 }
 
-.hp-report-header h3{
-  margin: 4px 0;
-  font-size: 16px;
+/* ===========================
+   GRID (LEFT + RIGHT)
+=========================== */
+.hp-grid-2{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: start;
 }
 
-.hp-report-header p{
-  margin: 2px 0;
-  font-size: 13px;
-  color: var(--hp-muted);
+/* =========================================
+   🔥 IMAGE LAYOUT FIX (CRITICAL)
+========================================= */
+
+/* 🔥 VERY IMPORTANT FIX */
+.hp-report-left{
+  width: 100%; /* ensures full width so images can push apart */
+  display: flex;
+  flex-direction: column;
 }
 
-/* LINE */
-.hp-report hr{
-  border: none;
-  border-top: 2px solid black;
-  margin: 20px 0;
-}
-
-/* SECTION */
-.hp-report-section{
+/* 🔥 PHOTO LEFT / ID RIGHT */
+.hp-id-photo-split{
+  display: flex;
+  justify-content: space-between; /* pushes far left & right */
+  align-items: flex-start;
+  width: 100%;
   margin-bottom: 25px;
 }
 
-.hp-report-section h3{
-  font-size: 15px;
-  border-bottom: 1px solid #000;
-  padding-bottom: 4px;
-  margin-bottom: 10px;
+/* 👤 PHOTO (LEFT) */
+.hp-photo{
+  width: 130px;
+  height: 150px;
+  object-fit: cover;
+  border: 1px solid #000;
+  border-radius: 6px;
 }
 
-/* TEXT */
-.hp-report p{
-  font-size: 13px;
-  margin: 4px 0;
+/* 🪪 ID CARD (RIGHT) */
+.hp-id-card{
+  width: 260px;
+  height: auto;
+  object-fit: contain;
+  border: 1px solid #000;
+  border-radius: 6px;
+
+  margin-left: auto; /* 🔥 FORCE RIGHT SIDE */
 }
 
-/* CARDS */
-.hp-report-card{
-  border-left: 4px solid var(--hp-primary);
-  padding: 10px;
-  margin-bottom: 10px;
-  background: #f9fafb;
+/* ===========================
+   TEXT UNDER IMAGES
+=========================== */
+.hp-report-left p{
+  margin: 6px 0;
 }
 
-/* TABLE */
-.hp-report .hp-table{
-  font-size: 13px;
-}
-
-.hp-report .hp-table th{
-  background: #e5e7eb;
-}
-
-/* FOOTER */
-.hp-report-footer{
-  margin-top: 50px;
-}
-
-.hp-report-footer p{
-  text-align: center;
-  font-size: 12px;
-}
-
-/* SIGNATURES */
+/* ===========================
+   SIGNATURES
+=========================== */
 .hp-signatures{
   display: flex;
   justify-content: space-between;
@@ -309,26 +216,114 @@ body{
 }
 
 /* ===========================
-   PRINT
+   PRINT MODE
 =========================== */
 @media print{
-  body{
-    background: white;
-  }
-
   .hp-sidebar,
   button{
     display: none !important;
   }
 
   .hp-report{
-    box-shadow: none;
     margin: 0;
     padding: 0;
+    box-shadow: none;
   }
 
   @page{
     size: A4;
     margin: 20mm;
   }
+}
+/* ===========================
+   FORM GRID (2 COLUMNS)
+=========================== */
+.hp-form-grid{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px 40px;
+  align-items: center;
+}
+
+/* ===========================
+   IMAGE UPLOAD SECTION
+=========================== */
+.hp-upload-row{
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  margin-bottom: 20px;
+}
+
+/* each upload block */
+.hp-upload-box{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+/* labels */
+.hp-upload-box label{
+  font-weight: 600;
+  color: var(--hp-text);
+}
+
+/* preview text */
+.hp-upload-box p{
+  margin: 0;
+  font-size: 13px;
+  color: var(--hp-muted);
+}
+
+/* ===========================
+   INPUT FIELDS
+=========================== */
+.hp-form-group{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hp-form-group label{
+  width: 140px;
+  font-size: 14px;
+  color: var(--hp-text);
+}
+
+/* input */
+.hp-form-group input,
+.hp-form-group select{
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* ===========================
+   BUTTONS
+=========================== */
+.hp-form-actions{
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.hp-btn{
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.hp-btn-primary{
+  background: var(--hp-primary);
+  color: white;
+}
+
+.hp-btn-secondary{
+  background: #94a3b8;
+  color: white;
 }

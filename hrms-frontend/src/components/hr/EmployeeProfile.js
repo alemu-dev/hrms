@@ -13,8 +13,10 @@ export default function EmployeeProfile({
   const [photoFile, setPhotoFile] = useState(null);
   const [idFile, setIdFile] = useState(null);
 
+  const isNew = !employee || !employee.id;
+
   useEffect(() => {
-    if (!employee || !employee.id) {
+    if (isNew) {
       setForm({
         full_name: "",
         department: "",
@@ -60,7 +62,7 @@ export default function EmployeeProfile({
 
       setIsEditing(false);
     }
-  }, [employee, setIsEditing]);
+  }, [employee]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -115,10 +117,11 @@ export default function EmployeeProfile({
     if (photoFile) payload.append("photo", photoFile);
     if (idFile) payload.append("national_id", idFile);
 
-    payload.delete("salary");
-    payload.delete("grade");
-    payload.delete("step");
-    payload.delete("position_number");
+    // ❌ REMOVED BAD LINES (these were breaking your save)
+    // payload.delete("salary");
+    // payload.delete("grade");
+    // payload.delete("step");
+    // payload.delete("position_number");
 
     onSave && onSave(payload);
     setIsEditing(false);
@@ -146,10 +149,20 @@ export default function EmployeeProfile({
     </div>
   );
 
-  const renderReadOnly = (label, value) => (
+  // ✅ Editable ONLY when creating new employee
+  const renderConditionalField = (label, name) => (
     <div className="hp-form-group">
       <label>{label}</label>
-      <p>{value || "—"}</p>
+      {(isEditing && isNew) ? (
+        <input
+          name={name}
+          value={form[name] || ""}
+          onChange={handleChange}
+          className="hp-form-input"
+        />
+      ) : (
+        <p>{form[name] || "—"}</p>
+      )}
     </div>
   );
 
@@ -157,7 +170,7 @@ export default function EmployeeProfile({
     <div className="hp-card">
 
       <h3>
-        {!employee?.id 
+        {isNew 
           ? "New Staff" 
           : isEditing 
             ? "Edit Employee" 
@@ -218,27 +231,26 @@ export default function EmployeeProfile({
 
       <hr />
 
-      {/* EMPLOYMENT BASIC */}
+      {/* 🔥 FIXED: Editable when creating */}
       <div className="hp-grid-2">
-        {renderReadOnly("Department", form.department)}
-        {renderReadOnly("Position", form.position)}
-        {renderReadOnly("Hire Date", form.hire_date)}
-        {renderReadOnly("Salary", form.salary)}
+        {renderConditionalField("Department", "department")}
+        {renderConditionalField("Position", "position")}
+        {renderConditionalField("Hire Date", "hire_date")}
+        {renderConditionalField("Salary", "salary")}
       </div>
 
       <hr />
 
-      {/* 🔥 NEW SECTION (ADDED ONLY — SAFE) */}
       <div className="hp-grid-2">
-        {renderReadOnly("Position Number", form.position_number)}
-        {renderReadOnly("Grade", form.grade)}
-        {renderReadOnly("Step", form.step)}
-        {renderReadOnly("Status", form.status)}
+        {renderConditionalField("Position Number", "position_number")}
+        {renderConditionalField("Grade", "grade")}
+        {renderConditionalField("Step", "step")}
+        {renderConditionalField("Status", "status")}
       </div>
 
       <hr />
 
-      {/* 🔥 PERSONAL INFO */}
+      {/* PERSONAL INFO */}
       <div className="hp-grid-2">
         {renderField("Phone", "phone_number")}
         {renderField("Gender", "gender")}
