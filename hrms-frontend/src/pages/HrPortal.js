@@ -130,14 +130,22 @@ export default function HrPortal() {
     if (!window.confirm("Save all changes?")) return;
 
     const token = localStorage.getItem("auth_token");
-    const isUpdate = !!selectedEmployee?.id;
+
+    // 🔥 FIXED HERE
+    const isUpdate = selectedEmployee !== null;
 
     // 🔥 attach extra data
-    formData.append("name", formData.get("full_name"));
+    formData.append("name", formData.get("full_name") || "");
     formData.append("education", JSON.stringify(educationList));
     formData.append("experience", JSON.stringify(experienceList));
     formData.append("biography", JSON.stringify(biographyList[0] || {}));
     formData.append("documents", JSON.stringify(documents || []));
+
+    // 🔥 ensure email exists (IMPORTANT)
+    if (!formData.get("email")) {
+      alert("Email is required");
+      return;
+    }
 
     // default password for new
     if (!isUpdate && !formData.get("password")) {
@@ -145,7 +153,7 @@ export default function HrPortal() {
     }
 
     // 🔥 Laravel PUT fix
-    if (isUpdate) {
+    if (isUpdate && selectedEmployee?.id) {
       formData.append("_method", "PUT");
     }
 
@@ -155,10 +163,9 @@ export default function HrPortal() {
 
     try {
       const res = await fetch(url, {
-        method: "POST", // 🔥 ALWAYS POST for FormData
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`
-          // ❌ DO NOT SET Content-Type
         },
         body: formData
       });
@@ -172,7 +179,7 @@ export default function HrPortal() {
         loadEmployees();
         setActiveScreen("list");
       } else {
-        alert("❌ Save failed");
+        alert(data.message || "❌ Save failed");
       }
     } catch (err) {
       console.error(err);
