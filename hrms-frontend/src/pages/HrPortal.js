@@ -6,7 +6,7 @@ import EmployeeMovementForm from "../components/hr/EmployeeMovementForm";
 import EmployeeReport from "../components/hr/EmployeeReport";
 import "../components/hr/HrPortal.css";
 
-const API_BASE = "https://hrms-owyj.onrender.comt/api";
+const API_BASE = "https://hrms-owyj.onrender.com/api";
 
 export default function HrPortal() {
   const [activeScreen, setActiveScreen] = useState("dashboard");
