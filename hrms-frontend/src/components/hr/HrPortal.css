@@ -13,8 +13,6 @@
   --hp-border: rgba(15, 23, 42, 0.12);
 
   --hp-primary: #2563eb;
-  --hp-primary-2: #1d4ed8;
-
   --hp-danger: #ef4444;
   --hp-success: #22c55e;
   --hp-warning: #f59e0b;
@@ -49,8 +47,11 @@ body{
   padding: 20px;
 }
 
+/* ===========================
+   SIDEBAR
+=========================== */
 .hp-sidebar{
-  background: var(--hp-surface);
+  background: #ffffff;
   border-radius: var(--hp-radius);
   box-shadow: var(--hp-shadow-soft);
   padding: 15px;
@@ -59,21 +60,29 @@ body{
   gap: 10px;
 }
 
+/* 🔥 TEXT-ONLY BUTTON STYLE */
 .hp-sidebar button{
-  padding: 11px;
+  padding: 12px;
   border-radius: 10px;
   border: 1px solid var(--hp-border);
   background: #fff;
+  color: var(--hp-text);
   cursor: pointer;
   font-weight: 600;
-  transition: all .2s;
+  text-align: left;
+  transition: all .2s ease;
 }
 
 .hp-sidebar button:hover{
-  background: #f1f5f9;
+  color: var(--hp-primary);
   border-color: var(--hp-primary);
+  background: #f8fafc;
+  transform: translateX(4px);
 }
 
+/* ===========================
+   MAIN
+=========================== */
 .hp-main-content{
   display: flex;
   flex-direction: column;
@@ -87,33 +96,41 @@ body{
   background: var(--hp-surface);
   border-radius: var(--hp-radius);
   box-shadow: var(--hp-shadow);
-  padding: 18px;
+  padding: 20px;
 }
 
 /* ===========================
-   BUTTONS
+   BUTTONS (TEXT-STYLE)
 =========================== */
-.hp-btn-save-main{
-  background: var(--hp-primary);
-  color: #fff;
-  border: none;
+.hp-btn-save-main,
+.hp-btn-edit-main{
+  background: #fff;
+  border: 1px solid var(--hp-border);
   padding: 12px 14px;
   border-radius: 10px;
   font-weight: 700;
   cursor: pointer;
+  transition: all .2s ease;
+}
+
+/* PRIMARY (Save) */
+.hp-btn-save-main{
+  color: var(--hp-primary);
 }
 
 .hp-btn-save-main:hover{
-  background: var(--hp-primary-2);
+  border-color: var(--hp-primary);
+  background: rgba(37, 99, 235, 0.05);
 }
 
+/* INFO (Edit) */
 .hp-btn-edit-main{
-  background: #0ea5e9;
-  color: #fff;
-  border: none;
-  padding: 12px 14px;
-  border-radius: 10px;
-  cursor: pointer;
+  color: #0ea5e9;
+}
+
+.hp-btn-edit-main:hover{
+  border-color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.05);
 }
 
 /* ===========================
@@ -178,8 +195,9 @@ body{
 }
 
 .hp-tabs-nav button.active{
-  background: var(--hp-primary);
-  color: white;
+  border-color: var(--hp-primary);
+  color: var(--hp-primary);
+  background: rgba(37, 99, 235, 0.05);
 }
 
 /* ===========================
@@ -192,7 +210,7 @@ body{
 }
 
 /* =========================================
-   🔥 PROFESSIONAL REPORT (MAIN UPGRADE)
+   🔥 PROFESSIONAL REPORT
 ========================================= */
 
 .hp-report{
@@ -201,6 +219,7 @@ body{
   margin: auto;
   padding: 40px;
   box-shadow: 0 0 0 1px #ddd;
+  font-family: "Times New Roman", serif;
 }
 
 /* HEADER */
@@ -278,6 +297,7 @@ body{
   font-size: 12px;
 }
 
+/* SIGNATURES */
 .hp-signatures{
   display: flex;
   justify-content: space-between;
@@ -289,7 +309,7 @@ body{
 }
 
 /* ===========================
-   PRINT (VERY IMPORTANT)
+   PRINT
 =========================== */
 @media print{
   body{
