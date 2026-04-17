@@ -4,6 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   LineChart, Line, AreaChart, Area 
 } from "recharts";
+
 import EmployeeTab from "../components/director/EmployeeTab.js";
 import LeavesTab from "../components/director/LeavesTab.js";
 import OverviewTab from "../components/director/OverviewTab.js";
@@ -14,17 +15,17 @@ export default function DirectorConsole() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false); 
-  const [globalChartStyle, setGlobalChartStyle] = useState("bar");
+  const [globalChartStyle, setGlobalChartStyle] = useState("pie"); // Default to Pie Charts
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       const token = localStorage.getItem("auth_token");
+
       try {
         const res = await fetch("https://hrms-owyj.onrender.com/api/employees", {
           method: "GET",
           headers: {
-            "Content-Type": "application/json",
             "Accept": "application/json",
             "Authorization": `Bearer ${token}`
           }
@@ -38,19 +39,19 @@ export default function DirectorConsole() {
         const data = await res.json();
         const empList = data?.data || data;
         setEmployees(Array.isArray(empList) ? empList : []);
-        setLoading(false);
       } catch (err) {
-        console.error("Failed to fetch:", err);
+        console.error("Failed to fetch employees:", err);
+      } finally {
         setLoading(false);
       }
     };
+
     loadData();
   }, []);
 
-  // --- Session Management ---
   const terminateSession = () => {
     localStorage.removeItem("auth_token");
-    localStorage.removeItem("user_data"); // Clear any other stored user info
+    localStorage.removeItem("user_data");
     window.location.href = "/login";
   };
 
@@ -60,15 +61,14 @@ export default function DirectorConsole() {
     }
   };
 
-  // --- Data Formatting Logic ---
+  // Data formatting for charts
   const formatDataForMetric = (metric) => {
     const counts = {};
     employees.forEach((emp) => {
       let key = "Not Specified";
+
       if (metric === "level") {
-        if (emp.user?.education && emp.user.education.length > 0) {
-          key = emp.user.education[0].level;
-        }
+        key = emp.user?.education?.[0]?.level || "Not Specified";
       } else if (metric === "salary") {
         const s = parseFloat(emp.salary);
         if (s < 15000) key = "0-15k";
@@ -78,57 +78,61 @@ export default function DirectorConsole() {
       } else {
         key = emp[metric] || "Not Specified";
       }
+
       const label = key.toUpperCase();
       counts[label] = (counts[label] || 0) + 1;
     });
 
-    const eduOrder = ["DIPLOMA", "DEGREE", "BA", "BSC", "MA", "MSC", "MBA", "PHD", "NOT SPECIFIED"];
-    return Object.keys(counts).map(k => ({ name: k, value: counts[k] }))
-      .sort((a, b) => {
-        if (metric === "level") return eduOrder.indexOf(a.name) - eduOrder.indexOf(b.name);
-        return 0;
-      });
+    return Object.keys(counts).map(k => ({ name: k, value: counts[k] }));
   };
 
   const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
 
   const DataChart = ({ title, metric }) => {
     const data = formatDataForMetric(metric);
-    const commonProps = { data, margin: { top: 10, right: 10, left: -20, bottom: 0 } };
 
     return (
       <div className="chart-card">
         <h3>{title}</h3>
-        <ResponsiveContainer width="100%" height={250}>
+        <ResponsiveContainer width="100%" height={280}>
           {globalChartStyle === "pie" ? (
             <PieChart>
-              <Pie data={data} cx="50%" cy="50%" outerRadius={80} dataKey="value" label>
-                {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+              <Pie 
+                data={data} 
+                cx="50%" 
+                cy="50%" 
+                outerRadius={90} 
+                dataKey="value" 
+                label
+              >
+                {data.map((_, i) => (
+                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                ))}
               </Pie>
               <Tooltip />
             </PieChart>
           ) : globalChartStyle === "line" ? (
-            <LineChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" fontSize={12} />
-              <YAxis fontSize={12} />
+            <LineChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
               <Tooltip />
-              <Line type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={3} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={3} />
             </LineChart>
           ) : globalChartStyle === "area" ? (
-            <AreaChart {...commonProps}>
+            <AreaChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" fontSize={12} />
-              <YAxis fontSize={12} />
+              <XAxis dataKey="name" />
+              <YAxis />
               <Tooltip />
               <Area type="monotone" dataKey="value" stroke="#4f46e5" fill="#c7d2fe" />
             </AreaChart>
           ) : (
-            <BarChart {...commonProps}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" fontSize={12} />
-              <YAxis fontSize={12} allowDecimals={false} />
-              <Tooltip cursor={{ fill: "#f1f5f9" }} />
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
               <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} />
             </BarChart>
           )}
@@ -139,28 +143,39 @@ export default function DirectorConsole() {
 
   return (
     <div className="director-container">
-      {/* Mobile Header/Toggle */}
+      {/* Mobile Toggle Button */}
       <button className="mobile-toggle-btn" onClick={() => setIsMenuOpen(!isMenuOpen)}>
         {isMenuOpen ? "✕" : "☰"}
       </button>
 
-      {/* Sidebar with Integrated Logout */}
+      {/* Sidebar */}
       <nav className={`left-navbar ${isMenuOpen ? "mobile-open" : ""}`}>
         <div className="nav-logo">DIRECTOR PANEL</div>
         <ul className="nav-links">
-          <li className={activeTab === "main" ? "active" : ""} onClick={() => { setActiveTab("main"); setIsMenuOpen(false); }}>🏠 Dashboard</li>
-          <li className={activeTab === "employees" ? "active" : ""} onClick={() => { setActiveTab("employees"); setIsMenuOpen(false); }}>👥 Employees</li>
-          <li className={activeTab === "leaves" ? "active" : ""} onClick={() => { setActiveTab("leaves"); setIsMenuOpen(false); }}>📅 Leaves</li>
-          <li className={activeTab === "overview" ? "active" : ""} onClick={() => { setActiveTab("overview"); setIsMenuOpen(false); }}>📢 Updates</li>
-          
-          {/* Logout button at the bottom of the nav */}
-          <li className="nav-logout-item" onClick={handleLogout} style={{ marginTop: 'auto', color: '#ef4444', fontWeight: 'bold' }}>
+          <li className={activeTab === "main" ? "active" : ""} 
+              onClick={() => { setActiveTab("main"); setIsMenuOpen(false); }}>
+            🏠 Dashboard
+          </li>
+          <li className={activeTab === "employees" ? "active" : ""} 
+              onClick={() => { setActiveTab("employees"); setIsMenuOpen(false); }}>
+            👥 Employees
+          </li>
+          <li className={activeTab === "leaves" ? "active" : ""} 
+              onClick={() => { setActiveTab("leaves"); setIsMenuOpen(false); }}>
+            📅 Leaves
+          </li>
+          <li className={activeTab === "overview" ? "active" : ""} 
+              onClick={() => { setActiveTab("overview"); setIsMenuOpen(false); }}>
+            📢 Updates
+          </li>
+
+          <li className="nav-logout-item" onClick={handleLogout}>
             🚪 Logout
           </li>
         </ul>
       </nav>
 
-      {/* Overlay for mobile sidebar */}
+      {/* Mobile Overlay */}
       {isMenuOpen && <div className="sidebar-overlay" onClick={() => setIsMenuOpen(false)}></div>}
 
       <main className="main-content">
@@ -175,8 +190,8 @@ export default function DirectorConsole() {
                   <div className="style-selector-container">
                     <span>Visual Style:</span>
                     <select value={globalChartStyle} onChange={(e) => setGlobalChartStyle(e.target.value)}>
-                      <option value="bar">Bar Graphs</option>
                       <option value="pie">Pie Charts</option>
+                      <option value="bar">Bar Graphs</option>
                       <option value="line">Line Graphs</option>
                       <option value="area">Area Charts</option>
                     </select>
@@ -184,9 +199,18 @@ export default function DirectorConsole() {
                 </div>
 
                 <div className="stats-grid">
-                  <div className="stat-box"><h3>Total Staff</h3><p>{employees.length}</p></div>
-                  <div className="stat-box"><h3>Active Depts</h3><p>{[...new Set(employees.map(e => e.department))].length}</p></div>
-                  <div className="stat-box"><h3>System Status</h3><p style={{ color: "#22c55e" }}>Active</p></div>
+                  <div className="stat-box">
+                    <h3>Total Staff</h3>
+                    <p>{employees.length}</p>
+                  </div>
+                  <div className="stat-box">
+                    <h3>Active Depts</h3>
+                    <p>{[...new Set(employees.map(e => e.department))].filter(Boolean).length}</p>
+                  </div>
+                  <div className="stat-box">
+                    <h3>System Status</h3>
+                    <p style={{ color: "#22c55e" }}>Active</p>
+                  </div>
                 </div>
 
                 <div className="charts-main-grid">

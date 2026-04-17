@@ -1,5 +1,6 @@
 import React from "react";
 import "./HrPortal.css";
+
 export default function EmployeeTabs({
   activeTab,
   setActiveTab,
@@ -13,33 +14,19 @@ export default function EmployeeTabs({
   setBiography,
   setDocuments
 }) {
-
-  // ✅ SAFE CHANGE HANDLER (FIXED 🔥)
+  // Update helper
   const handleChange = (list, setter, index, field, value) => {
     const updated = [...list];
-
-    // 🔥 ensure object exists
-    if (!updated[index]) {
-      updated[index] = {};
-    }
-
-    updated[index] = {
-      ...updated[index],
-      [field]: value
-    };
-
+    if (!updated[index]) updated[index] = {};
+    updated[index] = { ...updated[index], [field]: value };
     setter(updated);
   };
 
-  // ✅ REMOVE ITEM
   const removeItem = (list, setter, index) => {
     if (!window.confirm("Delete this item?")) return;
-
-    const updated = list.filter((_, i) => i !== index);
-    setter(updated);
+    setter(list.filter((_, i) => i !== index));
   };
 
-  // 🎓 EDUCATION
   const renderEducation = () => (
     <div className="hp-tab-pane">
       <div className="hp-tab-header">
@@ -68,9 +55,7 @@ export default function EmployeeTabs({
         )}
       </div>
 
-      {educationList.length === 0 && (
-        <p>No academic records found.</p>
-      )}
+      {educationList.length === 0 && <p>No academic records found.</p>}
 
       {educationList.map((edu, i) => (
         <div key={i} className="hp-data-card">
@@ -80,18 +65,14 @@ export default function EmployeeTabs({
                 className="hp-form-input"
                 placeholder="Level"
                 value={edu.level || ""}
-                onChange={(e) =>
-                  handleChange(educationList, setEducation, i, "level", e.target.value)
-                }
+                onChange={(e) => handleChange(educationList, setEducation, i, "level", e.target.value)}
               />
 
               <input
                 className="hp-form-input"
                 placeholder="Field"
                 value={edu.field || ""}
-                onChange={(e) =>
-                  handleChange(educationList, setEducation, i, "field", e.target.value)
-                }
+                onChange={(e) => handleChange(educationList, setEducation, i, "field", e.target.value)}
               />
 
               <input
@@ -107,30 +88,25 @@ export default function EmployeeTabs({
                 type="date"
                 className="hp-form-input"
                 value={edu.start_date || ""}
-                onChange={(e) =>
-                  handleChange(educationList, setEducation, i, "start_date", e.target.value)
-                }
+                onChange={(e) => handleChange(educationList, setEducation, i, "start_date", e.target.value)}
               />
 
               <input
                 type="date"
                 className="hp-form-input"
                 value={edu.end_date || ""}
-                onChange={(e) =>
-                  handleChange(educationList, setEducation, i, "end_date", e.target.value)
-                }
+                onChange={(e) => handleChange(educationList, setEducation, i, "end_date", e.target.value)}
               />
 
               <textarea
                 className="hp-form-input hp-grid-full"
                 placeholder="Notes"
                 value={edu.notes || ""}
-                onChange={(e) =>
-                  handleChange(educationList, setEducation, i, "notes", e.target.value)
-                }
+                onChange={(e) => handleChange(educationList, setEducation, i, "notes", e.target.value)}
               />
 
               <button
+                type="button"
                 className="hp-btn-delete-small"
                 onClick={() => removeItem(educationList, setEducation, i)}
               >
@@ -141,7 +117,9 @@ export default function EmployeeTabs({
             <div>
               <strong>{edu.level}</strong> in {edu.field}
               <div>{edu.institution}</div>
-              <small>{edu.start_date} — {edu.end_date}</small>
+              <small>
+                {edu.start_date} — {edu.end_date}
+              </small>
             </div>
           )}
         </div>
@@ -149,7 +127,6 @@ export default function EmployeeTabs({
     </div>
   );
 
-  // 💼 EXPERIENCE
   const renderExperience = () => (
     <div className="hp-tab-pane">
       <div className="hp-tab-header">
@@ -157,6 +134,7 @@ export default function EmployeeTabs({
 
         {isEditing && (
           <button
+            type="button"
             className="hp-btn-add"
             onClick={() =>
               setExperience([
@@ -176,54 +154,69 @@ export default function EmployeeTabs({
         )}
       </div>
 
-      {experienceList.map((exp, i) => (
-        <div key={i} className="hp-data-card">
-          {isEditing ? (
-            <>
-              <input
-                className="hp-form-input"
-                placeholder="Company"
-                value={exp.company || ""}
-                onChange={(e) =>
-                  handleChange(experienceList, setExperience, i, "company", e.target.value)
-                }
-              />
+      {experienceList.length === 0 ? (
+        <p>No work experience found.</p>
+      ) : (
+        experienceList.map((exp, i) => (
+          <div key={i} className="hp-data-card">
+            {isEditing ? (
+              <div className="hp-grid-2">
+                <input
+                  className="hp-form-input"
+                  placeholder="Company"
+                  value={exp.company || ""}
+                  onChange={(e) => handleChange(experienceList, setExperience, i, "company", e.target.value)}
+                />
 
-              <input
-                className="hp-form-input"
-                placeholder="Role"
-                value={exp.role || ""}
-                onChange={(e) =>
-                  handleChange(experienceList, setExperience, i, "role", e.target.value)
-                }
-              />
+                <input
+                  className="hp-form-input"
+                  placeholder="Role"
+                  value={exp.role || ""}
+                  onChange={(e) => handleChange(experienceList, setExperience, i, "role", e.target.value)}
+                />
 
-              <textarea
-                className="hp-form-input"
-                placeholder="Responsibilities"
-                value={exp.responsibilities || ""}
-                onChange={(e) =>
-                  handleChange(experienceList, setExperience, i, "responsibilities", e.target.value)
-                }
-              />
+                <textarea
+                  className="hp-form-input hp-grid-full"
+                  placeholder="Responsibilities"
+                  value={exp.responsibilities || ""}
+                  onChange={(e) =>
+                    handleChange(experienceList, setExperience, i, "responsibilities", e.target.value)
+                  }
+                />
 
-              <button
-                onClick={() => removeItem(experienceList, setExperience, i)}
-              >
-                Delete
-              </button>
-            </>
-          ) : (
-            <div>
-              <strong>{exp.role}</strong> at {exp.company}
-            </div>
-          )}
-        </div>
-      ))}
+                <input
+                  type="date"
+                  className="hp-form-input"
+                  value={exp.start_date || ""}
+                  onChange={(e) => handleChange(experienceList, setExperience, i, "start_date", e.target.value)}
+                />
+
+                <input
+                  type="date"
+                  className="hp-form-input"
+                  value={exp.end_date || ""}
+                  onChange={(e) => handleChange(experienceList, setExperience, i, "end_date", e.target.value)}
+                />
+
+                <button
+                  type="button"
+                  className="hp-btn-delete-small"
+                  onClick={() => removeItem(experienceList, setExperience, i)}
+                >
+                  Delete
+                </button>
+              </div>
+            ) : (
+              <div>
+                <strong>{exp.role}</strong> at {exp.company}
+              </div>
+            )}
+          </div>
+        ))
+      )}
     </div>
   );
 
-  // 📝 BIOGRAPHY (FIXED 🔥 BIG ISSUE HERE)
   const renderBiography = () => {
     const bio = biographyList[0] || { bio_text: "" };
 
@@ -235,9 +228,7 @@ export default function EmployeeTabs({
           <textarea
             className="hp-form-input"
             value={bio.bio_text || ""}
-            onChange={(e) =>
-              setBiography([{ bio_text: e.target.value }])
-            }
+            onChange={(e) => setBiography([{ bio_text: e.target.value }])}
           />
         ) : (
           <p>{bio.bio_text || "No biography"}</p>
@@ -246,7 +237,6 @@ export default function EmployeeTabs({
     );
   };
 
-  // 📁 DOCUMENTS
   const renderDocuments = () => (
     <div className="hp-tab-pane">
       <div className="hp-tab-header">
@@ -254,57 +244,66 @@ export default function EmployeeTabs({
 
         {isEditing && (
           <button
-            onClick={() =>
-              setDocuments([
-                ...documents,
-                { document_type: "", file_path: "" }
-              ])
-            }
+            type="button"
+            className="hp-btn-add"
+            onClick={() => setDocuments([...documents, { document_type: "", file_path: "" }])}
           >
             + Add
           </button>
         )}
       </div>
 
-      {documents.map((doc, i) => (
-        <div key={i}>
-          {isEditing ? (
-            <>
-              <input
-                value={doc.document_type || ""}
-                placeholder="Type"
-                onChange={(e) =>
-                  handleChange(documents, setDocuments, i, "document_type", e.target.value)
-                }
-              />
+      {documents.length === 0 ? (
+        <p>No documents found.</p>
+      ) : (
+        documents.map((doc, i) => (
+          <div key={i} className="hp-data-card">
+            {isEditing ? (
+              <div className="hp-grid-2">
+                <input
+                  className="hp-form-input"
+                  value={doc.document_type || ""}
+                  placeholder="Type"
+                  onChange={(e) =>
+                    handleChange(documents, setDocuments, i, "document_type", e.target.value)
+                  }
+                />
 
-              <input
-                value={doc.file_path || ""}
-                placeholder="File path"
-                onChange={(e) =>
-                  handleChange(documents, setDocuments, i, "file_path", e.target.value)
-                }
-              />
+                <input
+                  className="hp-form-input"
+                  value={doc.file_path || ""}
+                  placeholder="File path"
+                  onChange={(e) =>
+                    handleChange(documents, setDocuments, i, "file_path", e.target.value)
+                  }
+                />
 
-              <button onClick={() => removeItem(documents, setDocuments, i)}>
-                Delete
-              </button>
-            </>
-          ) : (
-            <div>{doc.document_type}</div>
-          )}
-        </div>
-      ))}
+                <button
+                  type="button"
+                  className="hp-btn-delete-small"
+                  onClick={() => removeItem(documents, setDocuments, i)}
+                >
+                  Delete
+                </button>
+              </div>
+            ) : (
+              <div>
+                <strong>{doc.document_type}</strong>
+              </div>
+            )}
+          </div>
+        ))
+      )}
     </div>
   );
 
   return (
     <div className="hp-card">
-      {/* TABS */}
       <div className="hp-tabs-nav">
         {["education", "experience", "biography", "documents"].map((tab) => (
           <button
             key={tab}
+            type="button"
             onClick={() => setActiveTab(tab)}
             className={activeTab === tab ? "active" : ""}
           >
@@ -313,7 +312,6 @@ export default function EmployeeTabs({
         ))}
       </div>
 
-      {/* CONTENT */}
       <div className="hp-tabs-content">
         {activeTab === "education" && renderEducation()}
         {activeTab === "experience" && renderExperience()}

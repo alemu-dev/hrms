@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import EmployeeList from "../components/hr/EmployeeList";
 import EmployeeProfile from "../components/hr/EmployeeProfile";
 import EmployeeTabs from "../components/hr/EmployeeTabs";
@@ -7,9 +7,20 @@ import EmployeeReport from "../components/hr/EmployeeReport";
 import "../components/hr/HrPortal.css";
 
 import {
-  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  LineChart, Line, AreaChart, Area
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
 } from "recharts";
 
 const API_BASE = "https://hrms-owyj.onrender.com/api";
@@ -22,38 +33,45 @@ export default function HrPortal() {
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
+  // Tab data
   const [educationList, setEducation] = useState([]);
   const [experienceList, setExperience] = useState([]);
   const [biographyList, setBiography] = useState([]);
   const [documents, setDocuments] = useState([]);
 
+  // Report
   const [reportUserId, setReportUserId] = useState(null);
 
   const [chartStyle, setChartStyle] = useState("bar");
+
+  const [lastFetchedSnapshot, setLastFetchedSnapshot] = useState(null);
+
+  const authToken = useCallback(() => localStorage.getItem("auth_token"), []);
 
   useEffect(() => {
     loadEmployees();
   }, []);
 
   const loadEmployees = async () => {
-    const token = localStorage.getItem("auth_token");
+    const token = authToken();
 
     try {
       let res = await fetch(`${API_BASE}/employees`, {
         headers: {
           Accept: "application/json",
-          Authorization: `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       let data = await res.json();
 
+      // Fallback endpoint
       if (!Array.isArray(data) || data.length === 0) {
         res = await fetch(`${API_BASE}/employee-profile`, {
           headers: {
             Accept: "application/json",
-            Authorization: `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         });
         data = await res.json();
       }
@@ -61,30 +79,55 @@ export default function HrPortal() {
       setEmployees(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
+      setEmployees([]);
     }
   };
 
+  const normalizeEmployeePayload = (data) => {
+    const user = data?.user || {};
+    return {
+      ...data,
+      user: {
+        education: Array.isArray(user.education) ? user.education : [],
+        experience: Array.isArray(user.experience) ? user.experience : [],
+        biography: user.biography ?? null,
+        documents: Array.isArray(user.documents) ? user.documents : [],
+        ...user,
+      },
+    };
+  };
+
   const fetchFullEmployee = async (userId) => {
-    const token = localStorage.getItem("auth_token");
+    const token = authToken();
 
     try {
       const res = await fetch(`${API_BASE}/employee-by-user/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      const data = await res.json();
+      const data = normalizeEmployeePayload(await res.json());
 
       setSelectedEmployee(data);
-      setEducation(data.user?.education || []);
-      setExperience(data.user?.experience || []);
-      setBiography(
-        data.user?.biography
-          ? [data.user.biography]
-          : [{ bio_text: "" }]
-      );
-      setDocuments(data.user?.documents || []);
+      setLastFetchedSnapshot(data);
+
+      setEducation(Array.isArray(data?.user?.education) ? data.user.education : []);
+      setExperience(Array.isArray(data?.user?.experience) ? data.user.experience : []);
+
+      if (data?.user?.biography) {
+        setBiography([{ bio_text: data.user.biography.bio_text || "" }]);
+      } else {
+        setBiography([{ bio_text: "" }]);
+      }
+
+      setDocuments(Array.isArray(data?.user?.documents) ? data.user.documents : []);
     } catch (err) {
       console.error(err);
+      setSelectedEmployee(null);
+      setLastFetchedSnapshot(null);
+      setEducation([]);
+      setExperience([]);
+      setBiography([{ bio_text: "" }]);
+      setDocuments([]);
     }
   };
 
@@ -97,7 +140,9 @@ export default function HrPortal() {
     }
 
     if (!emp) {
+      // Add new employee
       setSelectedEmployee(null);
+      setLastFetchedSnapshot(null);
       setEducation([]);
       setExperience([]);
       setBiography([{ bio_text: "" }]);
@@ -109,15 +154,16 @@ export default function HrPortal() {
 
     if (!emp.user_id) return alert("Employee missing user_id");
 
-    await fetchFullEmployee(emp.user_id);
     setIsEditing(false);
+    await fetchFullEmployee(emp.user_id);
+    setIsEditing(true);
     setActiveScreen("editor");
   };
 
   const handleGlobalSave = async (formData) => {
     if (!window.confirm("Save all changes?")) return;
 
-    const token = localStorage.getItem("auth_token");
+    const token = authToken();
     const isUpdate = !!selectedEmployee;
 
     const fullName = formData.get("full_name") || "";
@@ -126,11 +172,34 @@ export default function HrPortal() {
     if (!fullName.trim()) return alert("Full name is required");
     if (!email.trim()) return alert("Email is required");
 
+    // Fix hire_date format if needed
+    const hireDate = formData.get("hire_date");
+    if (hireDate && hireDate.includes("/")) {
+      const parts = hireDate.split("/");
+      if (parts.length === 3) {
+        formData.set("hire_date", `${parts[2]}-${parts[1]}-${parts[0]}`);
+      }
+    }
+
+    formData.delete("date_of_birth");
+
+    // Tab data
     formData.set("name", fullName);
     formData.set("education", JSON.stringify(educationList));
     formData.set("experience", JSON.stringify(experienceList));
-    formData.set("biography", JSON.stringify(biographyList[0] || { bio_text: "" }));
+    formData.set("biography", JSON.stringify(biographyList?.[0] || { bio_text: "" }));
     formData.set("documents", JSON.stringify(documents || []));
+
+    // Preserve important fields from snapshot
+    if (lastFetchedSnapshot && isUpdate) {
+      const payload = lastFetchedSnapshot;
+      const preserveKeys = ["department", "gender", "salary", "phone_number", "hire_date", "status"];
+      preserveKeys.forEach((k) => {
+        if (!formData.has(k) && payload?.[k] != null) {
+          formData.set(k, payload[k]);
+        }
+      });
+    }
 
     if (!isUpdate && !formData.get("password")) {
       formData.set("password", "password123");
@@ -148,36 +217,42 @@ export default function HrPortal() {
       const res = await fetch(url, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
-        body: formData
+        body: formData,
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        alert("❌ Server error. Check backend response.");
+        return;
+      }
 
       if (res.ok) {
         alert("✅ Saved successfully!");
         setIsEditing(false);
-        loadEmployees();
+        await loadEmployees();
         setActiveScreen("list");
       } else {
-        alert(data.message || "❌ Save failed");
+        alert(data?.message || "❌ Save failed");
       }
     } catch (err) {
       console.error(err);
+      alert("❌ Network error while saving");
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to DELETE this employee?"))
-      return;
+    if (!window.confirm("Are you sure you want to DELETE this employee?")) return;
 
-    const token = localStorage.getItem("auth_token");
-
+    const token = authToken();
     await fetch(`${API_BASE}/employees/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     });
 
-    loadEmployees();
+    await loadEmployees();
     setActiveScreen("list");
   };
 
@@ -187,40 +262,48 @@ export default function HrPortal() {
     window.location.reload();
   };
 
-  // ✅ CLEAN DATA FORMATTER
+  // Updated formatData to better handle status and gender
   const formatData = (metric) => {
     const counts = {};
 
-    employees.forEach(emp => {
+    employees.forEach((emp) => {
       let key = "Unknown";
 
-      if (metric === "salary") {
+      if (metric === "status") {
+        const status = (emp.status || "Active").toLowerCase();
+        key = status === "on leave" ? "On Leave" : 
+              status === "inactive" ? "Inactive" : "Active";
+      } 
+      else if (metric === "gender") {
+        key = (emp.gender || "Not Specified").toUpperCase();
+        if (key !== "MALE" && key !== "FEMALE") key = "Not Specified";
+      } 
+      else if (metric === "salary") {
         const s = parseFloat(emp.salary);
         if (isNaN(s)) key = "Unknown";
         else if (s < 15000) key = "0-15k";
         else if (s < 30000) key = "15k-30k";
         else if (s < 50000) key = "30k-50k";
         else key = "50k+";
-      }
+      } 
       else if (metric === "education") {
         key = emp.user?.education?.[0]?.level || "Unknown";
-      }
+      } 
       else {
         key = emp[metric] || "Unknown";
       }
 
-      key = key.toString().toUpperCase(); // ✅ FIX duplicate labels
-
+      key = key.toString();
       counts[key] = (counts[key] || 0) + 1;
     });
 
-    return Object.keys(counts).map(k => ({
+    return Object.keys(counts).map((k) => ({
       name: k,
-      value: counts[k]
+      value: counts[k],
     }));
   };
 
-  const COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626"];
+  const COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#8b5cf6"];
 
   const Chart = ({ title, metric }) => {
     const data = formatData(metric);
@@ -228,7 +311,6 @@ export default function HrPortal() {
     return (
       <div className="hp-card">
         <h3>{title}</h3>
-
         <ResponsiveContainer width="100%" height={250}>
           {chartStyle === "pie" ? (
             <PieChart>
@@ -271,24 +353,22 @@ export default function HrPortal() {
 
   return (
     <div className="hp-dashboard-layout">
-
       <aside className="hp-sidebar">
         <button onClick={() => setActiveScreen("dashboard")}>🏠 Dashboard</button>
         <button onClick={() => setActiveScreen("list")}>👥 Employee List</button>
         <button onClick={() => setActiveScreen("movement")}>📈 Movement</button>
         <button onClick={() => handleSelectEmployee(null)}>➕ Add Staff</button>
-        <button onClick={handleLogout} className="hp-btn-delete">🚪 Logout</button>
+        <button onClick={handleLogout} className="hp-btn-delete">
+          🚪 Logout
+        </button>
       </aside>
 
       <main className="hp-main-content">
-
         {activeScreen === "dashboard" && (
           <>
             <div className="hp-card">
               <h1>About the Organization</h1>
-              <p>
-                This HR system supports employee lifecycle, planning, and analytics.
-              </p>
+              <p>This HR system supports employee lifecycle, planning, and analytics.</p>
 
               <div className="hp-grid-2" style={{ marginTop: 20 }}>
                 <div className="hp-card">
@@ -298,14 +378,14 @@ export default function HrPortal() {
 
                 <div className="hp-card">
                   <h3>Departments</h3>
-                  <h2>{[...new Set(employees.map(e => e.department))].length}</h2>
+                  <h2>{[...new Set(employees.map((e) => e.department))].filter(Boolean).length}</h2>
                 </div>
               </div>
             </div>
 
             <div className="hp-card">
               <label>Select Chart Type: </label>
-              <select value={chartStyle} onChange={e => setChartStyle(e.target.value)}>
+              <select value={chartStyle} onChange={(e) => setChartStyle(e.target.value)}>
                 <option value="bar">Bar</option>
                 <option value="pie">Pie</option>
                 <option value="line">Line</option>
@@ -316,6 +396,7 @@ export default function HrPortal() {
             <div className="hp-grid-2">
               <Chart title="By Department" metric="department" />
               <Chart title="Gender Distribution" metric="gender" />
+              <Chart title="Status Distribution" metric="status" />
               <Chart title="Salary Distribution" metric="salary" />
               <Chart title="Education Level" metric="education" />
             </div>
@@ -323,7 +404,11 @@ export default function HrPortal() {
         )}
 
         {activeScreen === "list" && (
-          <EmployeeList employees={employees} openProfile={handleSelectEmployee} />
+          <EmployeeList 
+            employees={employees} 
+            openProfile={handleSelectEmployee} 
+            selectedEmployee={selectedEmployee}
+          />
         )}
 
         {activeScreen === "editor" && (
@@ -356,24 +441,20 @@ export default function HrPortal() {
           </div>
         )}
 
-        {activeScreen === "movement" && (
-          <EmployeeMovementForm employee={selectedEmployee} />
-        )}
+        {activeScreen === "movement" && <EmployeeMovementForm employee={selectedEmployee} />}
 
         {activeScreen === "report" && (
           <div className="hp-card">
             <button className="hp-btn hp-btn-view" onClick={() => setActiveScreen("list")}>
               ← Back
             </button>
-
             {!reportUserId ? (
-              <p>No employee selected</p>
+              <p>No employee selected for report</p>
             ) : (
               <EmployeeReport employeeId={reportUserId} />
             )}
           </div>
         )}
-
       </main>
     </div>
   );

@@ -15,13 +15,10 @@ use App\Http\Controllers\EmployeeMovementController;
 // -----------------------------------------------------------
 // PUBLIC ROUTES
 // -----------------------------------------------------------
-
-// 🔐 Login
 Route::post('/login', [UserController::class, 'login']);
 
-
 // -----------------------------------------------------------
-// PROTECTED ROUTES (Requires Auth)
+// PROTECTED ROUTES (Requires Sanctum Auth)
 // -----------------------------------------------------------
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -40,7 +37,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/leave-requests', [LeaveRequestController::class, 'store']);
     Route::get('/leave-requests', [LeaveRequestController::class, 'index']);
     Route::patch('/leave-requests/{id}', [LeaveRequestController::class, 'update']);
-    Route::get('/leave-requests/user/{userId}', [LeaveRequestController::class, 'indexByUser']);
+    
+    // ✅ FIXED: Cleaner and matching URL for employee-side leave requests
+    Route::get('/leave-requests/{userId}', [LeaveRequestController::class, 'indexByUser']);
 
     // ---------------- EMPLOYEES ----------------
     Route::get('/employees', [EmployeeController::class, 'index']);
@@ -49,10 +48,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/employees/{id}', [EmployeeController::class, 'update']);
     Route::delete('/employees/{id}', [EmployeeController::class, 'destroy']);
 
-    // 🔥 IMPORTANT: REPORT ROUTE (FIXED)
+    // Report Route
     Route::get('/report/{userId}', [EmployeeController::class, 'report']);
 
-    // Profile access
+    // Profile access (used by both HR and Employee portals)
     Route::get('/employee-profile/{userId}', [EmployeeController::class, 'showByUser']);
     Route::get('/employee-by-user/{userId}', [EmployeeController::class, 'showByUser']);
 

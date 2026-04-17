@@ -10,263 +10,281 @@ export default function EmployeeWorkspace() {
   const [endDate, setEndDate] = useState("");
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
-
-  // NEW: State for mobile sidebar responsiveness
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // NEW: Logout Logic
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
       localStorage.removeItem("userId");
       localStorage.removeItem("auth_token");
-      window.location.href = "/login"; // Redirect to login page
+      window.location.href = "/login";
     }
   };
 
-  // Load employee profile and leave requests
   useEffect(() => {
     const userId = localStorage.getItem("userId");
     const token = localStorage.getItem("auth_token");
 
     if (!userId || !token) {
-      setMessage("❌ No logged-in session found. Please login again.");
+      setMessage("❌ No active session. Please login again.");
+      setLoading(false);
       return;
     }
 
-    const authHeaders = {
-      "Accept": "application/json",
-      "Authorization": `Bearer ${token}`
+    const headers = {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
     };
 
-    fetch(`https://hrms-owyj.onrender.com/api/employee-profile/${userId}`, { headers: authHeaders })
-      .then(res => {
+    fetch(`https://hrms-owyj.onrender.com/api/employee-profile/${userId}`, { headers })
+      .then(async (res) => {
         if (res.status === 401) {
-          handleLogout(); // Auto-logout if token is expired
-          return;
+          handleLogout();
+          throw new Error("Unauthorized");
         }
-        if (!res.ok) throw new Error("Unauthorized");
-        return res.json();
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        console.log("📥 Raw API Response:", data);   // Helpful for debugging
+        return data;
       })
-      .then(data => {
-        setEmployee(data);
-        // Load leave requests using the employee's user_id
-        fetch(`https://hrms-owyj.onrender.com/api/leave-requests/${data.user_id}`, { headers: authHeaders })
-          .then(res => res.json())
-          .then(reqs => setLeaveRequests(Array.isArray(reqs) ? reqs : []))
-          .catch(err => console.error("Error loading leave requests:", err));
+      .then((data) => {
+        // Strong normalization to handle different backend structures
+        const normalized = {
+          id: data.id || data.user?.id,
+          user_id: data.user_id || data.user?.id,
+          full_name: data.full_name,
+          email: data.email || data.user?.email,
+          gender: data.gender,
+          department: data.department,
+          position: data.position,
+          position_number: data.position_number,
+          grade: data.grade,
+          step: data.step,
+          salary: data.salary,
+          hire_date: data.hire_date,
+          status: data.status,
+          phone_number: data.phone_number,
+          address: data.address,
+          date_of_birth: data.date_of_birth,
+          created_at: data.created_at,
+          updated_at: data.updated_at,
+
+          // Relations
+          education: data.education || data.user?.education || [],
+          experience: data.experience || data.user?.experience || [],
+          biography: data.biography || data.user?.biography || null,
+          documents: data.documents || data.user?.documents || [],
+        };
+
+        console.log("✅ Normalized Data:", normalized);
+        setEmployee(normalized);
       })
-      .catch(err => {
-        console.error("Error loading profile:", err);
-        setMessage("❌ Session expired. Please login.");
-      });
+      .then(() => {
+        // Load leave requests
+        const leaveUserId = employee?.user_id || employee?.id || userId; // fallback
+        return fetch(`https://hrms-owyj.onrender.com/api/leave-requests/${leaveUserId}`, { headers });
+      })
+      .then(async (res) => {
+        if (res && res.ok) {
+          const reqs = await res.json();
+          setLeaveRequests(Array.isArray(reqs) ? reqs : []);
+        }
+      })
+      .catch((err) => {
+        console.error("Load error:", err);
+        setMessage("❌ Failed to load profile. Check console.");
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const handleLeaveSubmit = async (e) => {
     e.preventDefault();
+    if (!employee) return;
+
     const token = localStorage.getItem("auth_token");
+    const payload = {
+      user_id: employee.user_id || employee.id,
+      start_date: startDate,
+      end_date: endDate,
+      reason,
+    };
 
     try {
-      const payload = {
-        user_id: employee.user_id,
-        start_date: startDate,
-        end_date: endDate,
-        reason: reason
-      };
-
-      const response = await fetch("https://hrms-owyj.onrender.com/api/leave-requests", {
+      const res = await fetch("https://hrms-owyj.onrender.com/api/leave-requests", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": `Bearer ${token}`
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
-      if (response.ok) {
-        setMessage("✅ Leave request submitted successfully");
-        setReason(""); setStartDate(""); setEndDate("");
-        setShowLeaveForm(false);
-        
-        // Refresh list after success
-        fetch(`https://hrms-owyj.onrender.com/api/leave-requests/${employee.user_id}`, {
-          headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
-        })
-          .then(res => res.json())
-          .then(reqs => setLeaveRequests(reqs));
+      if (res.ok) {
+        setMessage("✅ Leave request submitted successfully!");
+        setReason(""); setStartDate(""); setEndDate(""); setShowLeaveForm(false);
+
+        const headers = { Accept: "application/json", Authorization: `Bearer ${token}` };
+        const refreshRes = await fetch(`https://hrms-owyj.onrender.com/api/leave-requests/${employee.user_id || employee.id}`, { headers });
+        if (refreshRes.ok) {
+          const updated = await refreshRes.json();
+          setLeaveRequests(Array.isArray(updated) ? updated : []);
+        }
       } else {
-        setMessage("❌ Failed to submit. Please check your data.");
+        setMessage("❌ Failed to submit leave request.");
       }
-    } catch (error) {
-      setMessage("❌ Error submitting request.");
+    } catch (err) {
+      setMessage("❌ Network error.");
     }
   };
 
+  if (loading) return <div className="loading-screen">Loading your profile...</div>;
+
+  const safeLeaveRequests = Array.isArray(leaveRequests) ? leaveRequests : [];
+
   return (
     <div className="hp-dashboard-layout">
-      {/* NEW: Mobile Toggle Button */}
       <button className="mobile-menu-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
         {isSidebarOpen ? "✕" : "☰"}
       </button>
 
-      {/* --- SIDEBAR --- */}
       <aside className={`hp-sidebar ${isSidebarOpen ? "mobile-open" : ""}`}>
         <div className="hp-logo">HRMS PORTAL</div>
         <nav>
-          <button 
-            className={activeTab === 'overview' ? 'active' : ''} 
-            onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }}>
-            📊 Dashboard
-          </button>
-          <button 
-            className={activeTab === 'profile' ? 'active' : ''} 
-            onClick={() => { setActiveTab('profile'); setIsSidebarOpen(false); }}>
-            👤 Full Profile
-          </button>
-          <button 
-            className={activeTab === 'leave' ? 'active' : ''} 
-            onClick={() => { setActiveTab('leave'); setIsSidebarOpen(false); }}>
-            📅 Leave Requests
-          </button>
-          
-          {/* NEW: Logout Button at the bottom of Nav */}
-          <button className="logout-btn" onClick={handleLogout}>
-            🚪 Logout
-          </button>
+          <button className={activeTab === "overview" ? "active" : ""} onClick={() => {setActiveTab("overview"); setIsSidebarOpen(false);}}>📊 Dashboard</button>
+          <button className={activeTab === "profile" ? "active" : ""} onClick={() => {setActiveTab("profile"); setIsSidebarOpen(false);}}>👤 Full Profile</button>
+          <button className={activeTab === "leave" ? "active" : ""} onClick={() => {setActiveTab("leave"); setIsSidebarOpen(false);}}>📅 Leave Requests</button>
+          <button className="logout-btn" onClick={handleLogout}>🚪 Logout</button>
         </nav>
       </aside>
 
-      {/* NEW: Overlay for mobile when sidebar is open */}
-      {isSidebarOpen && <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)}></div>}
+      {isSidebarOpen && <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)} />}
 
-      {/* --- MAIN CONTENT --- */}
       <main className="hp-main-content">
         <header className="main-header">
           <h1>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h1>
-          <div className="user-welcome">Welcome, <strong>{employee?.full_name}</strong></div>
+          <div className="user-welcome">Welcome, <strong>{employee?.full_name || "User"}</strong></div>
         </header>
 
-        {message && <p className="message-toast">{message}</p>}
+        {message && <div className="error-banner">{message}</div>}
 
-        {/* --- TAB: OVERVIEW --- */}
-        {activeTab === 'overview' && (
+        {/* OVERVIEW */}
+        {activeTab === "overview" && employee && (
           <div className="tab-content">
-            <div className="card summary-grid">
-              <div className="summary-item">
-                <label>Department</label>
-                <p>{employee?.department}</p>
-              </div>
-              <div className="summary-item">
-                <label>Position</label>
-                <p>{employee?.position}</p>
-              </div>
-              <div className="summary-item">
-                <label>Status</label>
-                <p><span className={`status-pill ${employee?.status}`}>{employee?.status}</span></p>
-              </div>
+            <div className="card summary-card">
+              <div className="summary-item"><label>Department</label><p>{employee.department || "—"}</p></div>
+              <div className="summary-item"><label>Position</label><p>{employee.position || "—"}</p></div>
+              <div className="summary-item"><label>Status</label><p><span className={`status-pill ${employee.status?.toLowerCase() || "active"}`}>{employee.status || "ACTIVE"}</span></p></div>
             </div>
           </div>
         )}
 
-        {/* --- TAB: FULL PROFILE --- */}
-        {activeTab === 'profile' && employee && (
+        {/* FULL PROFILE - All fields included */}
+        {activeTab === "profile" && employee && (
           <div className="tab-content profile-detailed">
             <div className="card">
-              <div className="section-header">
-                <h2>Full Employee Record</h2>
-              </div>
 
               <div className="detail-info-grid">
                 <div className="detail-group">
-                  <h4>Personal & Contact</h4>
+                  <h4>Personal Information</h4>
                   <p><strong>Full Name:</strong> {employee.full_name}</p>
-                  <p><strong>Email:</strong> {employee.user?.email}</p>
-                  <p><strong>Salary:</strong> {employee.salary}</p>
+                  <p><strong>Email:</strong> {employee.email || "—"}</p>
+                  <p><strong>Gender:</strong> {employee.gender || "—"}</p>
+                  <p><strong>Date of Birth:</strong> {employee.date_of_birth || "N/A"}</p>
                   <p><strong>Phone:</strong> {employee.phone_number || "N/A"}</p>
                   <p><strong>Address:</strong> {employee.address || "N/A"}</p>
-                  <p><strong>Date of Birth:</strong> {employee.date_of_birth || "N/A"}</p>
                 </div>
-                
+
                 <div className="detail-group">
-                  <h4>Employment Info</h4>
-                  <p><strong>Staff ID:</strong> #EMP-{employee.user_id}</p>
-                  <p><strong>Department:</strong> {employee.department}</p>
-                  <p><strong>Position:</strong> {employee.position}</p>
+                  <h4>Employment Information</h4>
+                  <p><strong>Staff ID:</strong> #EMP-{employee.user_id || employee.id}</p>
+                  <p><strong>Department:</strong> {employee.department || "—"}</p>
+                  <p><strong>Position:</strong> {employee.position || "—"}</p>
+                  <p><strong>Position Number:</strong> {employee.position_number || "—"}</p>
+                  <p><strong>Grade:</strong> {employee.grade || "—"}</p>
+                  <p><strong>Step:</strong> {employee.step || "—"}</p>
                   <p><strong>Hire Date:</strong> {employee.hire_date || "N/A"}</p>
-                  <p><strong>Status:</strong> <span className={`status-pill ${employee.status}`}>{employee.status}</span></p>
+                  <p><strong>Salary:</strong> {employee.salary ? `${employee.salary} ETB` : "—"}</p>
+                  <p><strong>Status:</strong> <span className={`status-pill ${employee.status?.toLowerCase() || ""}`}>{employee.status || "Active"}</span></p>
                 </div>
 
                 <div className="detail-group">
                   <h4>System Data</h4>
                   <p><strong>Employee ID:</strong> {employee.id}</p>
-                  <p><strong>Created:</strong> {new Date(employee.created_at).toLocaleDateString()}</p>
-                  <p><strong>Last Update:</strong> {new Date(employee.updated_at).toLocaleDateString()}</p>
+                  <p><strong>Created:</strong> {employee.created_at ? new Date(employee.created_at).toLocaleDateString() : "—"}</p>
+                  <p><strong>Last Updated:</strong> {employee.updated_at ? new Date(employee.updated_at).toLocaleDateString() : "—"}</p>
                 </div>
               </div>
 
+              {/* Education History */}
               <section className="info-section">
                 <h3>🎓 Education History</h3>
-                {employee.user?.education?.map((edu, i) => (
+                {employee.education?.length > 0 ? employee.education.map((edu, i) => (
                   <div key={i} className="item-box history-card">
                     <div className="history-header">
                       <strong>{edu.level} in {edu.field}</strong>
-                      <span className="date-tag">{edu.start_date} to {edu.end_date}</span>
+                      <span className="date-tag">{edu.start_date} — {edu.end_date}</span>
                     </div>
                     <p className="inst-name">{edu.institution}</p>
-                    {edu.notes && <p className="notes-text"><strong>Notes:</strong> {edu.notes}</p>}
+                    {edu.notes && <p><strong>Notes:</strong> {edu.notes}</p>}
                   </div>
-                ))}
+                )) : <p>No education records found.</p>}
               </section>
 
+              {/* Work Experience */}
               <section className="info-section">
                 <h3>💼 Work Experience</h3>
-                {employee.user?.experience?.map((exp, i) => (
+                {employee.experience?.length > 0 ? employee.experience.map((exp, i) => (
                   <div key={i} className="item-box history-card">
                     <div className="history-header">
                       <strong>{exp.role}</strong>
-                      <span className="date-tag">{exp.start_date} to {exp.end_date}</span>
+                      <span className="date-tag">{exp.start_date} — {exp.end_date}</span>
                     </div>
                     <p className="inst-name">{exp.company}</p>
-                    <p className="resp-text"><strong>Responsibilities:</strong> {exp.responsibilities}</p>
+                    {exp.responsibilities && <p><strong>Responsibilities:</strong> {exp.responsibilities}</p>}
                   </div>
-                ))}
+                )) : <p>No work experience records found.</p>}
               </section>
 
+              {/* Biography */}
               <section className="info-section">
                 <h3>📜 Biography</h3>
                 <div className="item-box bio-box">
-                  <p>{employee.user?.biography?.bio_text || "No biography added yet."}</p>
+                  <p>{employee.biography?.bio_text || "No biography added yet."}</p>
                 </div>
               </section>
 
+              {/* Documents */}
               <section className="info-section">
                 <h3>📂 Documents</h3>
-                <div className="docs-grid">
-                  {employee.user?.documents?.map((doc, i) => (
-                    <div key={i} className="doc-card">
-                      <div className="doc-info">
-                        <strong>{doc.document_type}</strong>
-                        <span>ID: {doc.id} | Uploaded: {doc.uploaded_at}</span>
+                {employee.documents?.length > 0 ? (
+                  <div className="docs-grid">
+                    {employee.documents.map((doc, i) => (
+                      <div key={i} className="doc-card">
+                        <div className="doc-info">
+                          <strong>{doc.document_type}</strong>
+                          <span>Uploaded: {doc.uploaded_at || "—"}</span>
+                        </div>
+                        <a href={`https://hrms-owyj.onrender.com/storage/${doc.file_path}`} target="_blank" rel="noreferrer" className="view-btn">
+                          View File
+                        </a>
                       </div>
-                      <a href={`https://hrms-owyj.onrender.com/storage/${doc.file_path}`} target="_blank" rel="noreferrer" className="view-btn">
-                        View File
-                      </a>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : <p>No documents uploaded yet.</p>}
               </section>
             </div>
           </div>
         )}
 
-        {/* --- TAB: LEAVE REQUESTS --- */}
-        {activeTab === 'leave' && (
+        {/* Leave Requests Tab - unchanged */}
+        {activeTab === "leave" && (
           <div className="tab-content">
             <div className="card">
               <div className="header-row">
                 <h3>My Leave History</h3>
                 <button className="btn-primary" onClick={() => setShowLeaveForm(!showLeaveForm)}>
-                  {showLeaveForm ? "Close Form" : "New Request"}
+                  {showLeaveForm ? "Close Form" : "+ New Request"}
                 </button>
               </div>
 
@@ -294,15 +312,15 @@ export default function EmployeeWorkspace() {
               )}
 
               <table className="modern-table">
-                <thead>
-                  <tr><th>Type</th><th>Dates</th><th>Status</th></tr>
-                </thead>
+                <thead><tr><th>Type</th><th>Dates</th><th>Status</th></tr></thead>
                 <tbody>
-                  {leaveRequests.map((req, idx) => (
-                    <tr key={idx}>
-                      <td>{req.reason}</td>
-                      <td>{req.start_date} to {req.end_date}</td>
-                      <td><span className={`status-pill ${req.status}`}>{req.status}</span></td>
+                  {safeLeaveRequests.length === 0 ? (
+                    <tr><td colSpan="3" className="no-data">No leave requests found.</td></tr>
+                  ) : safeLeaveRequests.map((req, i) => (
+                    <tr key={i}>
+                      <td>{req.reason || "—"}</td>
+                      <td>{req.start_date} — {req.end_date}</td>
+                      <td><span className={`status-pill ${req.status?.toLowerCase() || "pending"}`}>{req.status || "Pending"}</span></td>
                     </tr>
                   ))}
                 </tbody>

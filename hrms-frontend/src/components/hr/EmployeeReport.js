@@ -16,9 +16,6 @@ export default function EmployeeReport({ employeeId }) {
     if (employeeId) loadReport();
   }, [employeeId]);
 
-  /* ===========================
-      LOAD DATA FROM API
-  ============================ */
   const loadReport = async () => {
     const token = localStorage.getItem("auth_token");
 
@@ -47,137 +44,149 @@ export default function EmployeeReport({ employeeId }) {
     }
   };
 
-  if (!employee) return <div>Loading...</div>;
+  if (!employee) return <div className="hp-card">Loading report...</div>;
 
   return (
     <div className="hp-report">
 
-      {/* ===========================
-          HEADER
-      ============================ */}
+      {/* OFFICIAL CENTERED HEADER */}
       <div className="hp-report-header">
-        <img src={logo} alt="logo" style={{ width: "80px", marginBottom: "10px" }} />
+        <img 
+          src={logo} 
+          alt="STICA Logo" 
+          style={{ width: "95px", marginBottom: "15px" }} 
+        />
+        
+        <h1 className="hp-report-main-title">
+          Benishangul Gumuz Regional State
+        </h1>
+        <h2 className="hp-report-agency">
+          Science and Technology Innovation Agency
+        </h2>
+        <h3 className="hp-report-directorate">
+          Human Resource Management Directorate
+        </h3>
 
-        <h2>Benishangul Gumuz Regional State</h2>
-        <h3>Science and Technology Innovation Agency</h3>
-        <p>Human Resource Management Directorate</p>
-        <p><strong>Employee Profile Report</strong></p>
+        <div className="hp-report-title-section">
+          <h2 className="report-title">
+            EMPLOYEE PROFILE REPORT
+          </h2>
+        </div>
 
-        <p style={{ textAlign: "right" }}>
-          {new Date().toLocaleDateString()}
+        <p className="hp-report-date">
+          Date: {new Date().toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          })}
         </p>
       </div>
 
-      <hr />
+      <hr className="report-divider" />
 
-      {/* ===========================
-          IDENTIFICATION SECTION
-      ============================ */}
+      {/* PHOTO + NATIONAL ID ROW */}
       <section className="hp-report-section">
         <h3>Employee Identification</h3>
 
-        <div className="hp-grid-2">
-
-          {/* ===========================
-              LEFT SIDE (PHOTO + BASIC INFO)
-          ============================ */}
-          <div className="hp-report-left">
-            {/* LEFT: EMPLOYEE PHOTO */}
-            {employee.photo && (
+        <div className="hp-report-photo-id-row">
+          {/* LEFT: PHOTO */}
+          <div className="hp-report-photo-side">
+            <label>Employee Photograph</label>
+            {employee.photo ? (
               <img
                 src={`https://hrms-owyj.onrender.com/storage/${employee.photo}?t=${Date.now()}`}
-                alt="employee"
-                className="hp-photo"
+                alt="Employee Photo"
+                className="hp-report-employee-photo"
               />
+            ) : (
+              <div className="hp-no-photo-box">No Photograph Available</div>
             )}
+          </div>
 
+          {/* RIGHT: NATIONAL ID */}
+          <div className="hp-report-id-side">
+            <label>National Identification Card</label>
+            {employee.national_id ? (
+              <img
+                src={`https://hrms-owyj.onrender.com/storage/${employee.national_id}?t=${Date.now()}`}
+                alt="National ID"
+                className="hp-report-national-id"
+              />
+            ) : (
+              <div className="hp-no-photo-box">No National ID Uploaded</div>
+            )}
+          </div>
+        </div>
+
+        {/* Personal & Job Information */}
+        <div className="hp-report-details">
+          <div>
             <p><strong>Full Name:</strong> {employee.full_name || "—"}</p>
-            <p><strong>Email:</strong> {employee.user?.email || "—"}</p>
+            <p><strong>Email:</strong> {employee.user?.email || employee.email || "—"}</p>
             <p><strong>Department:</strong> {employee.department || "—"}</p>
             <p><strong>Status:</strong> {employee.status || "—"}</p>
           </div>
-
-          {/* ===========================
-              RIGHT SIDE (ID CARD + JOB INFO)
-          ============================ */}
-          <div className="hp-report-right">
-            {/* RIGHT: NATIONAL ID */}
-            {employee.national_id && (
-              <img
-                src={`https://hrms-owyj.onrender.com/storage/${employee.national_id}?t=${Date.now()}`}
-                alt="national id"
-                className="hp-id-card-right"
-              />
-            )}
-
+          <div>
             <p><strong>Position:</strong> {employee.position || "—"}</p>
-            <p><strong>Position No:</strong> {employee.position_number || "—"}</p>
+            <p><strong>Position Number:</strong> {employee.position_number || "—"}</p>
             <p><strong>Grade / Step:</strong> {employee.grade || "—"} / {employee.step || "—"}</p>
             <p><strong>Hire Date:</strong> {employee.hire_date || "—"}</p>
             <p><strong>Salary:</strong> {employee.salary || "—"} ETB</p>
           </div>
-
         </div>
       </section>
 
-      {/* ===========================
-          BIOGRAPHY
-      ============================ */}
+      <hr className="report-divider" />
+
+      {/* BIOGRAPHY */}
       <section className="hp-report-section">
-        <h3>Biography</h3>
+        <h3>Professional Biography</h3>
         <p>{biography?.bio_text || "No biography available"}</p>
       </section>
 
-      {/* ===========================
-          EDUCATION
-      ============================ */}
+      {/* EDUCATION */}
       <section className="hp-report-section">
-        <h3>Education</h3>
-
-        {education.length === 0 && <p>No records</p>}
-
-        {education.map((edu, i) => (
-          <div key={i} className="hp-report-card">
-            <strong>{edu.level}</strong> in {edu.field}
-            <br />
-            {edu.institution}
-            <br />
-            <small>{edu.start_date} → {edu.end_date}</small>
-          </div>
-        ))}
+        <h3>Academic History</h3>
+        {education.length === 0 ? (
+          <p>No academic records found.</p>
+        ) : (
+          education.map((edu, i) => (
+            <div key={i} className="hp-report-card">
+              <strong>{edu.level}</strong> in {edu.field} — {edu.institution}
+              <br />
+              <small>{edu.start_date} — {edu.end_date}</small>
+            </div>
+          ))
+        )}
       </section>
 
-      {/* ===========================
-          EXPERIENCE
-      ============================ */}
+      {/* EXPERIENCE */}
       <section className="hp-report-section">
         <h3>Work Experience</h3>
-
-        {experience.length === 0 && <p>No records</p>}
-
-        {experience.map((exp, i) => (
-          <div key={i} className="hp-report-card">
-            <strong>{exp.role}</strong> at {exp.company}
-            <br />
-            <small>{exp.start_date} → {exp.end_date}</small>
-          </div>
-        ))}
+        {experience.length === 0 ? (
+          <p>No work experience records found.</p>
+        ) : (
+          experience.map((exp, i) => (
+            <div key={i} className="hp-report-card">
+              <strong>{exp.role}</strong> at {exp.company}
+              <br />
+              <small>{exp.start_date} — {exp.end_date}</small>
+            </div>
+          ))
+        )}
       </section>
 
-      {/* ===========================
-          MOVEMENTS
-      ============================ */}
+      {/* MOVEMENTS */}
       <section className="hp-report-section">
-        <h3>Employee Movements</h3>
-
+        <h3>Employee Movement History</h3>
         {movements.length === 0 ? (
-          <p>No movement records</p>
+          <p>No movement records found.</p>
         ) : (
           <table className="hp-table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Action</th>
+                <th>Effective Date</th>
+                <th>Type</th>
                 <th>Description</th>
               </tr>
             </thead>
@@ -186,7 +195,7 @@ export default function EmployeeReport({ employeeId }) {
                 <tr key={i}>
                   <td>{m.effective_date}</td>
                   <td>{m.type}</td>
-                  <td>{m.description}</td>
+                  <td>{m.description || "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -194,39 +203,15 @@ export default function EmployeeReport({ employeeId }) {
         )}
       </section>
 
-      {/* ===========================
-          DOCUMENTS
-      ============================ */}
-      <section className="hp-report-section">
-        <h3>Documents</h3>
-
-        {documents.length === 0 && <p>No documents</p>}
-
-        {documents.map((doc, i) => (
-          <div key={i}>
-            <a
-              href={`https://hrms-owyj.onrender.com/storage/${doc.file_path}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              📄 {doc.document_type}
-            </a>
-          </div>
-        ))}
-      </section>
-
-      {/* ===========================
-          FOOTER (SIGNATURES)
-      ============================ */}
+      {/* SIGNATURE SECTION */}
       <div className="hp-signatures">
         <div>
           <p>__________________________</p>
-          <p>HR Officer Signature</p>
+          <p>Prepared by: HR Officer</p>
         </div>
-
         <div>
           <p>__________________________</p>
-          <p>Authorized Signature</p>
+          <p>Approved by: Directorate Head</p>
         </div>
       </div>
 

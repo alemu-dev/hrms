@@ -1,28 +1,36 @@
 /* =========================================
    HRMS PORTAL - CLEAN PROFESSIONAL UI
+   Minimal background + Colorful by function
 ========================================= */
 
 /* ===========================
    DESIGN SYSTEM
 =========================== */
-:root{
+:root {
   --hp-bg: #f4f7fb;
   --hp-surface: #ffffff;
   --hp-text: #0f172a;
   --hp-muted: #64748b;
-  --hp-border: rgba(15, 23, 42, 0.12);
+  --hp-border: #e2e8f0;
 
-  --hp-primary: #2563eb;
-  --hp-danger: #dc2626;
+  --hp-save: #166534;      /* Green - Save */
+  --hp-cancel: #374151;    /* Gray - Cancel */
+  --hp-delete: #b91c1c;    /* Red - Delete */
+  --hp-add: #0e7490;       /* Teal - Add */
+  --hp-view: #1e40af;      /* Blue - View */
+  --hp-report: #6b21a8;    /* Purple - Report */
+  --hp-tab: #1e40af;       /* Blue for tabs */
 
-  --hp-radius: 14px;
-  --hp-shadow: 0 10px 30px rgba(2, 6, 23, 0.08);
+  --hp-radius: 12px;
+  --hp-shadow: 0 10px 30px rgba(2, 6, 23, 0.07);
 }
 
 /* =========================== */
-*{ box-sizing: border-box; }
+* { 
+  box-sizing: border-box; 
+}
 
-body{
+body {
   margin: 0;
   font-family: "Inter", system-ui, sans-serif;
   background: var(--hp-bg);
@@ -30,300 +38,395 @@ body{
 }
 
 /* ===========================
-   DASHBOARD LAYOUT
+   SIDEBAR - Keep Dark/Blue
 =========================== */
-.hp-dashboard-layout{
-  display: grid;
-  grid-template-columns: 260px 1fr;
-  gap: 20px;
-  padding: 20px;
-}
-
-/* ===========================
-   SIDEBAR
-=========================== */
-.hp-sidebar{
+.hp-sidebar {
   background: #0f172a;
   border-radius: var(--hp-radius);
-  padding: 15px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
-.hp-sidebar button{
-  padding: 12px;
+.hp-sidebar button {
+  padding: 12px 16px;
   border-radius: 10px;
   border: none;
-  background: rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.08);
   color: #e2e8f0;
   cursor: pointer;
   font-weight: 600;
   text-align: left;
+  transition: all 0.2s;
 }
 
-.hp-sidebar button:hover{
-  background: var(--hp-primary);
+.hp-sidebar button:hover {
+  background: #1e40af;
   color: white;
 }
 
 /* ===========================
-   MAIN CONTENT
+   MAIN CARD
 =========================== */
-.hp-main-content{
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-/* ===========================
-   CARD
-=========================== */
-.hp-card{
+.hp-card {
   background: var(--hp-surface);
   border-radius: var(--hp-radius);
   box-shadow: var(--hp-shadow);
-  padding: 20px;
+  padding: 24px;
+}
+
+/* ===========================
+   FORM & INPUTS
+=========================== */
+.hp-form-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.hp-form-group label {
+  width: 160px;
+  font-weight: 500;
+  color: #334155;
+  flex-shrink: 0;
+}
+
+.hp-form-input,
+.hp-form-group input,
+.hp-form-group select,
+.hp-form-group textarea {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14.5px;
+  background: white;
+}
+
+.hp-form-input:focus,
+.hp-form-group input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+/* ===========================
+   BUTTONS - COLORFUL BY FUNCTION
+=========================== */
+
+/* Save Buttons */
+button:contains("Save"), 
+button[onclick*="handleSave"],
+.hp-btn-save {
+  background: transparent;
+  color: var(--hp-save);
+  border: 2px solid var(--hp-save);
+  font-weight: 700;
+}
+
+button:contains("Save"):hover,
+.hp-btn-save:hover {
+  background: var(--hp-save);
+  color: white;
+}
+
+/* Cancel */
+button:contains("Cancel") {
+  background: transparent;
+  color: var(--hp-cancel);
+  border: 2px solid var(--hp-cancel);
+}
+
+button:contains("Cancel"):hover {
+  background: var(--hp-cancel);
+  color: white;
+}
+
+/* Delete */
+.hp-btn-delete,
+button:contains("Delete") {
+  background: transparent;
+  color: var(--hp-delete);
+  border: 2px solid var(--hp-delete);
+  font-weight: 600;
+}
+
+.hp-btn-delete:hover,
+button:contains("Delete"):hover {
+  background: var(--hp-delete);
+  color: white;
+}
+
+/* Add Buttons */
+.hp-btn-add,
+button:contains("Add") {
+  background: transparent;
+  color: var(--hp-add);
+  border: 2px solid var(--hp-add);
+  font-weight: 600;
+}
+
+.hp-btn-add:hover,
+button:contains("Add"):hover {
+  background: var(--hp-add);
+  color: white;
+}
+
+/* View Buttons */
+button:contains("View") {
+  background: transparent;
+  color: var(--hp-view);
+  border: 2px solid var(--hp-view);
+}
+
+button:contains("View"):hover {
+  background: var(--hp-view);
+  color: white;
+}
+
+/* Report Buttons */
+button:contains("Report") {
+  background: transparent;
+  color: var(--hp-report);
+  border: 2px solid var(--hp-report);
+}
+
+button:contains("Report"):hover {
+  background: var(--hp-report);
+  color: white;
+}
+
+/* Small delete inside tabs */
+.hp-btn-delete-small {
+  background: transparent;
+  color: var(--hp-delete);
+  border: 1.5px solid var(--hp-delete);
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.hp-btn-delete-small:hover {
+  background: var(--hp-delete);
+  color: white;
+}
+
+/* ===========================
+   TABS
+=========================== */
+.hp-tabs-nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.hp-tabs-nav button {
+  background: transparent;
+  color: var(--hp-tab);
+  border: 2px solid #e2e8f0;
+  padding: 10px 24px;
+  border-radius: 30px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hp-tabs-nav button:hover {
+  border-color: var(--hp-tab);
+}
+
+.hp-tabs-nav button.active {
+  background: var(--hp-tab);
+  color: white;
+  border-color: var(--hp-tab);
 }
 
 /* ===========================
    TABLE
 =========================== */
-.hp-table{
+.hp-table {
   width: 100%;
   border-collapse: collapse;
 }
 
-.hp-table th{
-  padding: 12px;
-  background: #f1f5f9;
+.hp-table th {
+  padding: 14px 12px;
+  background: #f8fafc;
   text-align: left;
+  font-weight: 600;
+  color: #1e2937;
 }
 
-.hp-table td{
-  padding: 12px;
+.hp-table td {
+  padding: 14px 12px;
   border-bottom: 1px solid #e2e8f0;
 }
 
-/* =========================================
-   REPORT (MAIN DOCUMENT)
-========================================= */
-
-.hp-report{
+/* ===========================
+   REPORT STYLES
+=========================== */
+.hp-report {
   background: white;
   max-width: 820px;
-  margin: 40px auto;
+  margin: 30px auto;
   padding: 40px 50px;
   font-family: "Times New Roman", serif;
   color: #000;
-  line-height: 1.6;
+  line-height: 1.7;
 }
 
-/* ===========================
-   HEADER
-=========================== */
-.hp-report-header{
-  text-align: center;
-}
-
-/* =========================== */
-.hp-report hr{
-  border-top: 1px solid black;
-  margin: 15px 0;
-}
-
-/* ===========================
-   SECTION
-=========================== */
-.hp-report-section{
-  margin-bottom: 20px;
-}
-
-.hp-report-section h3{
-  font-size: 14px;
-  text-decoration: underline;
-  margin-bottom: 10px;
-}
-
-/* ===========================
-   GRID (LEFT + RIGHT)
-=========================== */
-.hp-grid-2{
+.hp-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 40px;
-  align-items: start;
 }
 
-/* =========================================
-   🔥 IMAGE LAYOUT FIX (CRITICAL)
-========================================= */
-
-/* 🔥 VERY IMPORTANT FIX */
-.hp-report-left{
-  width: 100%; /* ensures full width so images can push apart */
-  display: flex;
-  flex-direction: column;
-}
-
-/* 🔥 PHOTO LEFT / ID RIGHT */
-.hp-id-photo-split{
-  display: flex;
-  justify-content: space-between; /* pushes far left & right */
-  align-items: flex-start;
-  width: 100%;
-  margin-bottom: 25px;
-}
-
-/* 👤 PHOTO (LEFT) */
-.hp-photo{
-  width: 130px;
-  height: 150px;
-  object-fit: cover;
-  border: 1px solid #000;
+.hp-photo, .hp-id-card-right {
+  border: 2px solid #000;
   border-radius: 6px;
-}
-
-/* 🪪 ID CARD (RIGHT) */
-.hp-id-card{
-  width: 260px;
-  height: auto;
-  object-fit: contain;
-  border: 1px solid #000;
-  border-radius: 6px;
-
-  margin-left: auto; /* 🔥 FORCE RIGHT SIDE */
-}
-
-/* ===========================
-   TEXT UNDER IMAGES
-=========================== */
-.hp-report-left p{
-  margin: 6px 0;
-}
-
-/* ===========================
-   SIGNATURES
-=========================== */
-.hp-signatures{
-  display: flex;
-  justify-content: space-between;
-  margin-top: 60px;
-}
-
-.hp-signatures div{
-  text-align: center;
 }
 
 /* ===========================
    PRINT MODE
 =========================== */
-@media print{
-  .hp-sidebar,
-  button{
-    display: none !important;
+@media print {
+  .hp-sidebar, button { 
+    display: none !important; 
   }
-
-  .hp-report{
+  .hp-report {
     margin: 0;
     padding: 0;
     box-shadow: none;
   }
-
-  @page{
+  @page {
     size: A4;
     margin: 20mm;
   }
 }
-/* ===========================
-   FORM GRID (2 COLUMNS)
-=========================== */
-.hp-form-grid{
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px 40px;
-  align-items: center;
-}
-
-/* ===========================
-   IMAGE UPLOAD SECTION
-=========================== */
-.hp-upload-row{
+/* GOVERNMENTAL REPORT LAYOUT - PHOTO LEFT + ID RIGHT */
+.hp-report-photo-id-row {
   display: flex;
   justify-content: space-between;
-  gap: 40px;
-  margin-bottom: 20px;
+  gap: 50px;
+  margin: 25px 0 35px 0;
+  flex-wrap: wrap;
 }
 
-/* each upload block */
-.hp-upload-box{
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
+.hp-report-photo-side,
+.hp-report-id-side {
+  flex: 1;
+  min-width: 300px;
+  text-align: center;
 }
 
-/* labels */
-.hp-upload-box label{
+.hp-report-photo-side label,
+.hp-report-id-side label {
+  display: block;
   font-weight: 600;
-  color: var(--hp-text);
+  margin-bottom: 10px;
+  color: #1e2937;
 }
 
-/* preview text */
-.hp-upload-box p{
-  margin: 0;
-  font-size: 13px;
-  color: var(--hp-muted);
+.hp-report-employee-photo {
+  width: 100%;
+  max-width: 260px;
+  height: 320px;
+  object-fit: cover;
+  border: 4px solid #000;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
 }
 
-/* ===========================
-   INPUT FIELDS
-=========================== */
-.hp-form-group{
+.hp-report-national-id {
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  border: 4px solid #000;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+
+.hp-no-photo-box {
+  width: 260px;
+  height: 320px;
+  border: 3px dashed #999;
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  margin: 0 auto;
+  color: #666;
+  background: #f8fafc;
+  font-style: italic;
 }
 
-.hp-form-group label{
-  width: 140px;
-  font-size: 14px;
-  color: var(--hp-text);
-}
-
-/* input */
-.hp-form-group input,
-.hp-form-group select{
-  flex: 1;
-  padding: 6px 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-/* ===========================
-   BUTTONS
-=========================== */
-.hp-form-actions{
+.hp-report-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 50px;
   margin-top: 20px;
-  display: flex;
-  gap: 10px;
 }
 
-.hp-btn{
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
+.report-divider {
+  border-top: 2px solid #000;
+  margin: 25px 0;
+}
+
+.report-title {
+  font-size: 18px;
+  margin: 15px 0 5px 0;
+}
+/* ====================== IMPROVED OFFICIAL HEADER ====================== */
+.hp-report-header {
+  text-align: center;
+  margin-bottom: 35px;
+  color: #000;
+}
+
+.hp-report-header img {
+  display: block;
+  margin: 0 auto 15px;
+}
+
+.hp-report-main-title {
+  font-size: 23px;
+  font-weight: 700;
+  margin: 8px 0 6px 0;
+  color: #1e2937;
+}
+
+.hp-report-agency {
+  font-size: 19px;
   font-weight: 600;
+  margin: 6px 0;
+  color: #1e2937;
 }
 
-.hp-btn-primary{
-  background: var(--hp-primary);
-  color: white;
+.hp-report-directorate {
+  font-size: 17px;
+  font-weight: 500;
+  margin: 6px 0 20px 0;
+  color: #334155;
 }
 
-.hp-btn-secondary{
-  background: #94a3b8;
-  color: white;
+.hp-report-title-section {
+  margin: 25px 0 12px 0;
 }
+
+.report-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  margin: 0;
+  color: #000;
+  text-transform: uppercase;
+}
+
+.hp-report-date {
+  text-align: right;
+  font-size: 14.5px;
+  color: #444;
+  margin-top: 15px;
+}
+
+/* Keep your existing report styles (photo-id-row, divider, etc.) */
