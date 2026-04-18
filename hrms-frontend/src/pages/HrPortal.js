@@ -23,7 +23,10 @@ import {
   Area,
 } from "recharts";
 
-const API_BASE = "https://hrms-owyj.onrender.com/api";
+// 🔥 UPDATE THIS TO YOUR ACTUAL LARAVEL BACKEND URL
+// It should be the Render (or other) service where your Laravel API is deployed
+const API_BASE = "https://hrms-owyj.onrender.com/api";  
+// Change it to something like: "https://your-laravel-backend.onrender.com/api"
 
 export default function HrPortal() {
   const [activeScreen, setActiveScreen] = useState("dashboard");
@@ -54,6 +57,10 @@ export default function HrPortal() {
 
   const loadEmployees = async () => {
     const token = authToken();
+    if (!token) {
+      console.error("No auth token found");
+      return;
+    }
 
     try {
       let res = await fetch(`${API_BASE}/employees`, {
@@ -78,7 +85,7 @@ export default function HrPortal() {
 
       setEmployees(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(err);
+      console.error("Load employees failed:", err);
       setEmployees([]);
     }
   };
@@ -99,10 +106,14 @@ export default function HrPortal() {
 
   const fetchFullEmployee = async (userId) => {
     const token = authToken();
+    if (!token) return;
 
     try {
       const res = await fetch(`${API_BASE}/employee-by-user/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 
+          Accept: "application/json",
+          Authorization: `Bearer ${token}` 
+        },
       });
 
       const data = normalizeEmployeePayload(await res.json());
@@ -121,7 +132,7 @@ export default function HrPortal() {
 
       setDocuments(Array.isArray(data?.user?.documents) ? data.user.documents : []);
     } catch (err) {
-      console.error(err);
+      console.error("Fetch full employee failed:", err);
       setSelectedEmployee(null);
       setLastFetchedSnapshot(null);
       setEducation([]);
@@ -203,23 +214,20 @@ export default function HrPortal() {
       sendFormData.append("phone_number", formData.get("phone_number") || "");
       sendFormData.append("address", formData.get("address") || "");
 
-      // Files from EmployeeProfile (photo, national_id, etc.)
+      // Files
       if (formData.get("photo")) sendFormData.append("photo", formData.get("photo"));
       if (formData.get("national_id")) sendFormData.append("national_id", formData.get("national_id"));
-      // Add any other files here if needed
 
-      // Complex arrays → convert to JSON string (Laravel can json_decode them)
+      // Complex arrays as JSON strings
       sendFormData.append("education", JSON.stringify(educationList));
       sendFormData.append("experience", JSON.stringify(experienceList));
       sendFormData.append("biography", JSON.stringify(biographyList?.[0] || { bio_text: "" }));
       sendFormData.append("documents", JSON.stringify(documents || []));
 
-      // Method spoofing for Laravel (very important for updates with files)
       if (isUpdate) {
         sendFormData.append("_method", "PUT");
       }
 
-      // Default password for new employee
       if (!isUpdate) {
         sendFormData.append("password", formData.get("password") || "password123");
       }
@@ -228,24 +236,25 @@ export default function HrPortal() {
       console.log("📤 Is Update:", isUpdate);
 
       const res = await fetch(url, {
-        method: "POST",                    // Always POST when using FormData + files
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          // Do NOT set Content-Type → browser adds correct multipart/form-data
+          Accept: "application/json",        // ← Important
         },
         body: sendFormData,
       });
 
       const responseText = await res.text();
       console.log("Status:", res.status);
-      console.log("Raw Response:", responseText.substring(0, 800));
+      console.log("Content-Type:", res.headers.get("content-type"));
+      console.log("Raw Response (first 700 chars):", responseText.substring(0, 700));
 
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        throw new Error("Server did not return valid JSON");
+      // Check if we got HTML instead of JSON
+      if (!responseText.trim().startsWith("{") && !responseText.trim().startsWith("[")) {
+        throw new Error(`Expected JSON but received HTML (Status ${res.status})`);
       }
+
+      const data = JSON.parse(responseText);
 
       if (res.ok) {
         alert("✅ Saved successfully!");
@@ -258,7 +267,7 @@ export default function HrPortal() {
       }
     } catch (err) {
       console.error("💥 FULL SAVE ERROR:", err);
-      alert("❌ Network / Save error. Check browser console for details.");
+      alert("❌ Save failed. Check browser console for details.\n\nLikely cause: Wrong API_BASE or backend returning HTML.");
     }
   };
 
@@ -268,7 +277,10 @@ export default function HrPortal() {
     const token = authToken();
     await fetch(`${API_BASE}/employees/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { 
+        Accept: "application/json",
+        Authorization: `Bearer ${token}` 
+      },
     });
 
     await loadEmployees();
@@ -281,7 +293,6 @@ export default function HrPortal() {
     window.location.reload();
   };
 
-  // Updated formatData to better handle status and gender
   const formatData = (metric) => {
     const counts = {};
 
