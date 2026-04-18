@@ -33,18 +33,13 @@ export default function HrPortal() {
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
-  // Tab data
   const [educationList, setEducation] = useState([]);
   const [experienceList, setExperience] = useState([]);
   const [biographyList, setBiography] = useState([]);
   const [documents, setDocuments] = useState([]);
 
-  // Report
   const [reportUserId, setReportUserId] = useState(null);
-
   const [chartStyle, setChartStyle] = useState("bar");
-
-  const [lastFetchedSnapshot, setLastFetchedSnapshot] = useState(null);
 
   const authToken = useCallback(() => localStorage.getItem("auth_token"), []);
 
@@ -58,20 +53,14 @@ export default function HrPortal() {
 
     try {
       let res = await fetch(`${API_BASE}/employees`, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
       });
 
       let data = await res.json();
 
       if (!Array.isArray(data) || data.length === 0) {
         res = await fetch(`${API_BASE}/employee-profile`, {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
         });
         data = await res.json();
       }
@@ -79,55 +68,28 @@ export default function HrPortal() {
       setEmployees(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to load employees:", err);
-      setEmployees([]);
     }
-  };
-
-  const normalizeEmployeePayload = (data) => {
-    const user = data?.user || {};
-    return {
-      ...data,
-      user: {
-        education: Array.isArray(user.education) ? user.education : [],
-        experience: Array.isArray(user.experience) ? user.experience : [],
-        biography: user.biography ?? null,
-        documents: Array.isArray(user.documents) ? user.documents : [],
-        ...user,
-      },
-    };
   };
 
   const fetchFullEmployee = async (userId) => {
     const token = authToken();
-
     try {
       const res = await fetch(`${API_BASE}/employee-by-user/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      const data = normalizeEmployeePayload(await res.json());
+      const data = await res.json();
 
       setSelectedEmployee(data);
-      setLastFetchedSnapshot(data);
-
-      setEducation(Array.isArray(data?.user?.education) ? data.user.education : []);
-      setExperience(Array.isArray(data?.user?.experience) ? data.user.experience : []);
-
+      setEducation(Array.isArray(data.user?.education) ? data.user.education : []);
+      setExperience(Array.isArray(data.user?.experience) ? data.user.experience : []);
       setBiography(
-        data?.user?.biography
+        data.user?.biography
           ? [{ bio_text: data.user.biography.bio_text || "" }]
           : [{ bio_text: "" }]
       );
-
-      setDocuments(Array.isArray(data?.user?.documents) ? data.user.documents : []);
+      setDocuments(Array.isArray(data.user?.documents) ? data.user.documents : []);
     } catch (err) {
-      console.error("Failed to fetch full employee:", err);
-      setSelectedEmployee(null);
-      setLastFetchedSnapshot(null);
-      setEducation([]);
-      setExperience([]);
-      setBiography([{ bio_text: "" }]);
-      setDocuments([]);
+      console.error(err);
     }
   };
 
@@ -140,9 +102,8 @@ export default function HrPortal() {
     }
 
     if (!emp) {
-      // Add new employee
+      // Add New Employee
       setSelectedEmployee(null);
-      setLastFetchedSnapshot(null);
       setEducation([]);
       setExperience([]);
       setBiography([{ bio_text: "" }]);
@@ -160,7 +121,7 @@ export default function HrPortal() {
   };
 
   // ===============================
-  // ✅ FINAL FIXED SAVE FUNCTION
+  // ✅ HYBRID SAVE - Best for Production (Photo + Complex Data)
   // ===============================
   const handleGlobalSave = async (formData) => {
     if (!window.confirm("Save all changes?")) return;
@@ -168,61 +129,45 @@ export default function HrPortal() {
     const token = authToken();
     const isUpdate = !!selectedEmployee?.id;
 
-    // Basic validation
-    const fullName = formData.get("full_name") || formData.get("name") || "";
-    const email = formData.get("email") || "";
+    const payload = {
+      name: formData.get("full_name") || formData.get("name") || "",
+      email: formData.get("email") || "",
+      position_number: formData.get("position_number") || "",
+      grade: formData.get("grade") || "",
+      step: formData.get("step") || "",
+      salary: formData.get("salary") || "",
+      hire_date: formData.get("hire_date") || "",
+      status: formData.get("status") || "active",
+      phone_number: formData.get("phone_number") || "",
+      address: formData.get("address") || "",
+      gender: formData.get("gender") || "",
+      department: formData.get("department") || "",
 
-    if (!fullName.trim()) return alert("Full name is required");
-    if (!email.trim()) return alert("Email is required");
+      education: educationList || [],
+      experience: experienceList || [],
+      biography: biographyList?.[0] || { bio_text: "" },
+      documents: documents || [],
+    };
 
-    // Fix hire_date format (if sent as dd/mm/yyyy)
-    let hireDate = formData.get("hire_date");
-    if (hireDate && hireDate.includes("/")) {
-      const parts = hireDate.split("/");
-      if (parts.length === 3) {
-        hireDate = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
-        formData.set("hire_date", hireDate);
-      }
-    }
+    if (!payload.name.trim()) return alert("Full name is required");
+    if (!payload.email.trim()) return alert("Email is required");
 
-    // === Copy all important basic fields safely ===
-    const importantFields = [
-      "full_name", "name", "email", "position_number", "grade", "step",
-      "salary", "hire_date", "status", "phone_number", "address", "gender",
-      "department"
-    ];
-
-    importantFields.forEach((field) => {
-      const value = formData.get(field);
-      if (value !== null && value !== undefined && value !== "") {
-        formData.set(field, value);   // .set prevents duplicates
-      }
-    });
-
-    // Name fallback
-    if (formData.get("full_name") && !formData.get("name")) {
-      formData.set("name", formData.get("full_name"));
-    }
-
-    // === Send tab data as JSON strings (Critical Fix) ===
-    formData.set("education", JSON.stringify(educationList || []));
-    formData.set("experience", JSON.stringify(experienceList || []));
-    formData.set("biography", JSON.stringify(biographyList?.[0] || { bio_text: "" }));
-    formData.set("documents", JSON.stringify(documents || []));
-
-    // Default password for new employees
     if (!isUpdate) {
-      if (!formData.get("password")) {
-        formData.set("password", "password123");
-      }
-      if (!formData.get("password_confirmation")) {
-        formData.set("password_confirmation", "password123");
-      }
+      payload.password = "password123";
+      payload.password_confirmation = "password123";
     }
 
-    // Laravel PUT method spoofing
+    const finalFormData = new FormData();
+    finalFormData.append("data", JSON.stringify(payload));
+
+    // Append photo if user uploaded one
+    const photoFile = formData.get("photo");
+    if (photoFile) {
+      finalFormData.append("photo", photoFile);
+    }
+
     if (isUpdate && selectedEmployee?.id) {
-      formData.set("_method", "PUT");
+      finalFormData.append("_method", "PUT");
     }
 
     const url = isUpdate
@@ -232,38 +177,28 @@ export default function HrPortal() {
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          // Do NOT set Content-Type when using FormData
-        },
-        body: formData,
+        headers: { Authorization: `Bearer ${token}` },
+        body: finalFormData,
       });
 
       let responseData = {};
-      const text = await res.text();
       try {
-        responseData = JSON.parse(text);
-      } catch (e) {
-        console.warn("Non-JSON response received");
-      }
-
-      console.log("Save Response:", responseData);
+        responseData = await res.json();
+      } catch (e) {}
 
       if (res.ok) {
         alert(isUpdate ? "✅ Employee updated successfully!" : "✅ New employee created successfully!");
-
-        await loadEmployees();           // Refresh list
+        await loadEmployees();
         setIsEditing(false);
         setActiveScreen("list");
-        setSelectedEmployee(null);       // Clear selection
-        setLastFetchedSnapshot(null);
+        setSelectedEmployee(null);
       } else {
         console.error("Save failed:", responseData);
-        alert(responseData.message || responseData.error || "❌ Save failed. Check console for details.");
+        alert(responseData.message || "❌ Save failed");
       }
     } catch (err) {
-      console.error("Network error during save:", err);
-      alert("❌ Network error while saving employee.");
+      console.error("Network error:", err);
+      alert("❌ Network error while saving.");
     }
   };
 
@@ -279,7 +214,6 @@ export default function HrPortal() {
       await loadEmployees();
       setActiveScreen("list");
     } catch (err) {
-      console.error(err);
       alert("Failed to delete employee");
     }
   };
@@ -290,7 +224,7 @@ export default function HrPortal() {
     window.location.reload();
   };
 
-  // Chart formatting logic (unchanged)
+  // ==================== CHART FUNCTIONS (Unchanged) ====================
   const formatData = (metric) => {
     const counts = {};
 
@@ -319,10 +253,7 @@ export default function HrPortal() {
       counts[key] = (counts[key] || 0) + 1;
     });
 
-    return Object.keys(counts).map((k) => ({
-      name: k,
-      value: counts[k],
-    }));
+    return Object.keys(counts).map((k) => ({ name: k, value: counts[k] }));
   };
 
   const COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#8b5cf6"];
@@ -337,9 +268,7 @@ export default function HrPortal() {
           {chartStyle === "pie" ? (
             <PieChart>
               <Pie data={data} dataKey="value" label>
-                {data.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                ))}
+                {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Pie>
               <Tooltip />
             </PieChart>
@@ -380,9 +309,7 @@ export default function HrPortal() {
         <button onClick={() => setActiveScreen("list")}>👥 Employee List</button>
         <button onClick={() => setActiveScreen("movement")}>📈 Movement</button>
         <button onClick={() => handleSelectEmployee(null)}>➕ Add Staff</button>
-        <button onClick={handleLogout} className="hp-btn-delete">
-          🚪 Logout
-        </button>
+        <button onClick={handleLogout} className="hp-btn-delete">🚪 Logout</button>
       </aside>
 
       <main className="hp-main-content">
@@ -397,7 +324,6 @@ export default function HrPortal() {
                   <h3>Total Employees</h3>
                   <h2>{employees.length}</h2>
                 </div>
-
                 <div className="hp-card">
                   <h3>Departments</h3>
                   <h2>{[...new Set(employees.map((e) => e.department))].filter(Boolean).length}</h2>
@@ -426,10 +352,7 @@ export default function HrPortal() {
         )}
 
         {activeScreen === "list" && (
-          <EmployeeList 
-            employees={employees} 
-            openProfile={handleSelectEmployee} 
-          />
+          <EmployeeList employees={employees} openProfile={handleSelectEmployee} />
         )}
 
         {activeScreen === "editor" && (
