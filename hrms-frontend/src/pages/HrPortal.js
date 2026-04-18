@@ -207,6 +207,7 @@ export default function HrPortal() {
       sendFormData.append("grade", formData.get("grade") || "");
       sendFormData.append("step", formData.get("step") || "");
       sendFormData.append("department", formData.get("department") || "");
+      sendFormData.append("position", formData.get("position") || "");
       sendFormData.append("gender", formData.get("gender") || "");
       sendFormData.append("salary", formData.get("salary") || "");
       sendFormData.append("hire_date", hire_date || "");

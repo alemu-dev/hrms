@@ -55,7 +55,6 @@ export default function EmployeeProfile({
         gender: employee.gender || profile.gender || "",
         phone_number: employee.phone_number || profile.phone_number || "",
         address: employee.address || profile.address || "",
-        date_of_birth: employee.date_of_birth || profile.date_of_birth || "",
         email: employee.user?.email || employee.email || "",
         password: "",
       });
