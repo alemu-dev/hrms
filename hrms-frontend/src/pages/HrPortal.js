@@ -182,7 +182,7 @@ export default function HrPortal() {
     }
 
     formData.delete("date_of_birth");
-
+// Tab data
     // Tab data
     formData.set("name", fullName);
     formData.set("education", JSON.stringify(educationList));
