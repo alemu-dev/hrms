@@ -54,6 +54,7 @@ export default function HrPortal() {
 
   const loadEmployees = async () => {
     const token = authToken();
+    if (!token) return;
 
     try {
       let res = await fetch(`${API_BASE}/employees`, {
@@ -65,7 +66,6 @@ export default function HrPortal() {
 
       let data = await res.json();
 
-      // Fallback endpoint
       if (!Array.isArray(data) || data.length === 0) {
         res = await fetch(`${API_BASE}/employee-profile`, {
           headers: {
@@ -78,7 +78,7 @@ export default function HrPortal() {
 
       setEmployees(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load employees:", err);
       setEmployees([]);
     }
   };
@@ -113,15 +113,15 @@ export default function HrPortal() {
       setEducation(Array.isArray(data?.user?.education) ? data.user.education : []);
       setExperience(Array.isArray(data?.user?.experience) ? data.user.experience : []);
 
-      if (data?.user?.biography) {
-        setBiography([{ bio_text: data.user.biography.bio_text || "" }]);
-      } else {
-        setBiography([{ bio_text: "" }]);
-      }
+      setBiography(
+        data?.user?.biography
+          ? [{ bio_text: data.user.biography.bio_text || "" }]
+          : [{ bio_text: "" }]
+      );
 
       setDocuments(Array.isArray(data?.user?.documents) ? data.user.documents : []);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch full employee:", err);
       setSelectedEmployee(null);
       setLastFetchedSnapshot(null);
       setEducation([]);
@@ -156,55 +156,71 @@ export default function HrPortal() {
 
     setIsEditing(false);
     await fetchFullEmployee(emp.user_id);
-    setIsEditing(true);
     setActiveScreen("editor");
   };
 
+  // ===============================
+  // ✅ FINAL FIXED SAVE FUNCTION
+  // ===============================
   const handleGlobalSave = async (formData) => {
     if (!window.confirm("Save all changes?")) return;
 
     const token = authToken();
-    const isUpdate = !!selectedEmployee;
+    const isUpdate = !!selectedEmployee?.id;
 
-    const fullName = formData.get("full_name") || "";
+    // Basic validation
+    const fullName = formData.get("full_name") || formData.get("name") || "";
     const email = formData.get("email") || "";
 
     if (!fullName.trim()) return alert("Full name is required");
     if (!email.trim()) return alert("Email is required");
 
-    // Fix hire_date format if needed
-    const hireDate = formData.get("hire_date");
+    // Fix hire_date format (if sent as dd/mm/yyyy)
+    let hireDate = formData.get("hire_date");
     if (hireDate && hireDate.includes("/")) {
       const parts = hireDate.split("/");
       if (parts.length === 3) {
-        formData.set("hire_date", `${parts[2]}-${parts[1]}-${parts[0]}`);
+        hireDate = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+        formData.set("hire_date", hireDate);
       }
     }
 
-    formData.delete("date_of_birth");
-// Tab data
-    // Tab data
-    formData.set("name", fullName);
-    formData.set("education", JSON.stringify(educationList));
-    formData.set("experience", JSON.stringify(experienceList));
+    // === Copy all important basic fields safely ===
+    const importantFields = [
+      "full_name", "name", "email", "position_number", "grade", "step",
+      "salary", "hire_date", "status", "phone_number", "address", "gender",
+      "department"
+    ];
+
+    importantFields.forEach((field) => {
+      const value = formData.get(field);
+      if (value !== null && value !== undefined && value !== "") {
+        formData.set(field, value);   // .set prevents duplicates
+      }
+    });
+
+    // Name fallback
+    if (formData.get("full_name") && !formData.get("name")) {
+      formData.set("name", formData.get("full_name"));
+    }
+
+    // === Send tab data as JSON strings (Critical Fix) ===
+    formData.set("education", JSON.stringify(educationList || []));
+    formData.set("experience", JSON.stringify(experienceList || []));
     formData.set("biography", JSON.stringify(biographyList?.[0] || { bio_text: "" }));
     formData.set("documents", JSON.stringify(documents || []));
 
-    // Preserve important fields from snapshot
-    if (lastFetchedSnapshot && isUpdate) {
-      const payload = lastFetchedSnapshot;
-      const preserveKeys = ["department", "gender", "salary", "phone_number", "hire_date", "status"];
-      preserveKeys.forEach((k) => {
-        if (!formData.has(k) && payload?.[k] != null) {
-          formData.set(k, payload[k]);
-        }
-      });
+    // Default password for new employees
+    if (!isUpdate) {
+      if (!formData.get("password")) {
+        formData.set("password", "password123");
+      }
+      if (!formData.get("password_confirmation")) {
+        formData.set("password_confirmation", "password123");
+      }
     }
 
-    if (!isUpdate && !formData.get("password")) {
-      formData.set("password", "password123");
-    }
-
+    // Laravel PUT method spoofing
     if (isUpdate && selectedEmployee?.id) {
       formData.set("_method", "PUT");
     }
@@ -216,30 +232,38 @@ export default function HrPortal() {
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // Do NOT set Content-Type when using FormData
+        },
         body: formData,
       });
 
+      let responseData = {};
       const text = await res.text();
-      let data;
       try {
-        data = JSON.parse(text);
-      } catch {
-        alert("❌ Server error. Check backend response.");
-        return;
+        responseData = JSON.parse(text);
+      } catch (e) {
+        console.warn("Non-JSON response received");
       }
 
+      console.log("Save Response:", responseData);
+
       if (res.ok) {
-        alert("✅ Saved successfully!");
+        alert(isUpdate ? "✅ Employee updated successfully!" : "✅ New employee created successfully!");
+
+        await loadEmployees();           // Refresh list
         setIsEditing(false);
-        await loadEmployees();
         setActiveScreen("list");
+        setSelectedEmployee(null);       // Clear selection
+        setLastFetchedSnapshot(null);
       } else {
-        alert(data?.message || "❌ Save failed");
+        console.error("Save failed:", responseData);
+        alert(responseData.message || responseData.error || "❌ Save failed. Check console for details.");
       }
     } catch (err) {
-      console.error(err);
-      alert("❌ Network error while saving");
+      console.error("Network error during save:", err);
+      alert("❌ Network error while saving employee.");
     }
   };
 
@@ -247,13 +271,17 @@ export default function HrPortal() {
     if (!window.confirm("Are you sure you want to DELETE this employee?")) return;
 
     const token = authToken();
-    await fetch(`${API_BASE}/employees/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    await loadEmployees();
-    setActiveScreen("list");
+    try {
+      await fetch(`${API_BASE}/employees/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await loadEmployees();
+      setActiveScreen("list");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete employee");
+    }
   };
 
   const handleLogout = () => {
@@ -262,7 +290,7 @@ export default function HrPortal() {
     window.location.reload();
   };
 
-  // Updated formatData to better handle status and gender
+  // Chart formatting logic (unchanged)
   const formatData = (metric) => {
     const counts = {};
 
@@ -271,29 +299,23 @@ export default function HrPortal() {
 
       if (metric === "status") {
         const status = (emp.status || "Active").toLowerCase();
-        key = status === "on leave" ? "On Leave" : 
-              status === "inactive" ? "Inactive" : "Active";
-      } 
-      else if (metric === "gender") {
+        key = status === "on leave" ? "On Leave" : status === "inactive" ? "Inactive" : "Active";
+      } else if (metric === "gender") {
         key = (emp.gender || "Not Specified").toUpperCase();
         if (key !== "MALE" && key !== "FEMALE") key = "Not Specified";
-      } 
-      else if (metric === "salary") {
+      } else if (metric === "salary") {
         const s = parseFloat(emp.salary);
         if (isNaN(s)) key = "Unknown";
         else if (s < 15000) key = "0-15k";
         else if (s < 30000) key = "15k-30k";
         else if (s < 50000) key = "30k-50k";
         else key = "50k+";
-      } 
-      else if (metric === "education") {
+      } else if (metric === "education") {
         key = emp.user?.education?.[0]?.level || "Unknown";
-      } 
-      else {
+      } else {
         key = emp[metric] || "Unknown";
       }
 
-      key = key.toString();
       counts[key] = (counts[key] || 0) + 1;
     });
 
@@ -407,7 +429,6 @@ export default function HrPortal() {
           <EmployeeList 
             employees={employees} 
             openProfile={handleSelectEmployee} 
-            selectedEmployee={selectedEmployee}
           />
         )}
 
