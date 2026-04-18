@@ -160,97 +160,107 @@ export default function HrPortal() {
     setActiveScreen("editor");
   };
 
- const handleGlobalSave = async (formData) => {
-  if (!window.confirm("Save all changes?")) return;
+  const handleGlobalSave = async (formData) => {
+    if (!window.confirm("Save all changes?")) return;
 
-  const token = authToken();
-  const isUpdate = !!selectedEmployee;
+    const token = authToken();
+    const isUpdate = !!selectedEmployee;
 
-  const fullName = formData.get("full_name") || "";
-  const email = formData.get("email") || "";
+    const fullName = formData.get("full_name") || "";
+    const email = formData.get("email") || "";
 
-  if (!fullName.trim()) return alert("Full name is required");
-  if (!email.trim()) return alert("Email is required");
+    if (!fullName.trim()) return alert("Full name is required");
+    if (!email.trim()) return alert("Email is required");
 
-  // Fix hire_date format
-  let hire_date = formData.get("hire_date");
-  if (hire_date && hire_date.includes("/")) {
-    const parts = hire_date.split("/");
-    if (parts.length === 3) {
-      hire_date = `${parts[2]}-${parts[1]}-${parts[0]}`;
-    }
-  }
-
-  // ✅ CLEAN JSON PAYLOAD
-  const payload = {
-    full_name: fullName,
-    name: fullName,
-    email: email,
-
-    position_number: formData.get("position_number"),
-    grade: formData.get("grade"),
-    step: formData.get("step"),
-    department: formData.get("department"),
-    gender: formData.get("gender"),
-
-    salary: formData.get("salary"),
-    hire_date: hire_date,
-    status: formData.get("status"),
-
-    phone_number: formData.get("phone_number"),
-    address: formData.get("address"),
-
-    education: educationList,
-    experience: experienceList,
-    biography: biographyList?.[0] || { bio_text: "" },
-    documents: documents || [],
-  };
-
-  // Preserve important fields (for update)
-  if (isUpdate && lastFetchedSnapshot) {
-    const preserveKeys = ["department", "gender", "salary", "phone_number", "hire_date", "status"];
-    preserveKeys.forEach((k) => {
-      if (!payload[k] && lastFetchedSnapshot[k]) {
-        payload[k] = lastFetchedSnapshot[k];
+    // Fix hire_date format
+    let hire_date = formData.get("hire_date");
+    if (hire_date && hire_date.includes("/")) {
+      const parts = hire_date.split("/");
+      if (parts.length === 3) {
+        hire_date = `${parts[2]}-${parts[1]}-${parts[0]}`;
       }
-    });
-  }
-
-  // Default password for new employee
-  if (!isUpdate) {
-    payload.password = formData.get("password") || "password123";
-  }
-
-  const url = isUpdate
-    ? `${API_BASE}/employees/${selectedEmployee.id}`
-    : `${API_BASE}/employees`;
-
-  try {
-    const res = await fetch(url, {
-      method: isUpdate ? "PUT" : "POST", // ✅ FIXED
-      headers: {
-        "Content-Type": "application/json", // ✅ IMPORTANT
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      alert("✅ Saved successfully!");
-      setIsEditing(false);
-      await loadEmployees();
-      setActiveScreen("list");
-    } else {
-      console.error(data);
-      alert(data?.message || "❌ Save failed");
     }
-  } catch (err) {
-    console.error(err);
-    alert("❌ Network error while saving");
-  }
-};
+
+    const url = isUpdate
+      ? `${API_BASE}/employees/${selectedEmployee.id}`
+      : `${API_BASE}/employees`;
+
+    try {
+      const sendFormData = new FormData();
+
+      // Basic fields
+      sendFormData.append("full_name", fullName);
+      sendFormData.append("name", fullName);
+      sendFormData.append("email", email);
+      sendFormData.append("position_number", formData.get("position_number") || "");
+      sendFormData.append("grade", formData.get("grade") || "");
+      sendFormData.append("step", formData.get("step") || "");
+      sendFormData.append("department", formData.get("department") || "");
+      sendFormData.append("gender", formData.get("gender") || "");
+      sendFormData.append("salary", formData.get("salary") || "");
+      sendFormData.append("hire_date", hire_date || "");
+      sendFormData.append("status", formData.get("status") || "");
+      sendFormData.append("phone_number", formData.get("phone_number") || "");
+      sendFormData.append("address", formData.get("address") || "");
+
+      // Files from EmployeeProfile (photo, national_id, etc.)
+      if (formData.get("photo")) sendFormData.append("photo", formData.get("photo"));
+      if (formData.get("national_id")) sendFormData.append("national_id", formData.get("national_id"));
+      // Add any other files here if needed
+
+      // Complex arrays → convert to JSON string (Laravel can json_decode them)
+      sendFormData.append("education", JSON.stringify(educationList));
+      sendFormData.append("experience", JSON.stringify(experienceList));
+      sendFormData.append("biography", JSON.stringify(biographyList?.[0] || { bio_text: "" }));
+      sendFormData.append("documents", JSON.stringify(documents || []));
+
+      // Method spoofing for Laravel (very important for updates with files)
+      if (isUpdate) {
+        sendFormData.append("_method", "PUT");
+      }
+
+      // Default password for new employee
+      if (!isUpdate) {
+        sendFormData.append("password", formData.get("password") || "password123");
+      }
+
+      console.log("🔄 Saving to:", url);
+      console.log("📤 Is Update:", isUpdate);
+
+      const res = await fetch(url, {
+        method: "POST",                    // Always POST when using FormData + files
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // Do NOT set Content-Type → browser adds correct multipart/form-data
+        },
+        body: sendFormData,
+      });
+
+      const responseText = await res.text();
+      console.log("Status:", res.status);
+      console.log("Raw Response:", responseText.substring(0, 800));
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        throw new Error("Server did not return valid JSON");
+      }
+
+      if (res.ok) {
+        alert("✅ Saved successfully!");
+        setIsEditing(false);
+        await loadEmployees();
+        setActiveScreen("list");
+      } else {
+        console.error("Server Error:", data);
+        alert(data?.message || `❌ Save failed (${res.status})`);
+      }
+    } catch (err) {
+      console.error("💥 FULL SAVE ERROR:", err);
+      alert("❌ Network / Save error. Check browser console for details.");
+    }
+  };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to DELETE this employee?")) return;

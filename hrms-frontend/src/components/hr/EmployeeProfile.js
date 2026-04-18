@@ -33,8 +33,6 @@ export default function EmployeeProfile({
         date_of_birth: "",
         email: "",
         password: "",
-        photo: null,
-        national_id: null
       });
       setIsEditing(true);
     } else if (employee) {
@@ -60,12 +58,10 @@ export default function EmployeeProfile({
         date_of_birth: employee.date_of_birth || profile.date_of_birth || "",
         email: employee.user?.email || employee.email || "",
         password: "",
-        photo: employee.photo || profile.photo || null,
-        national_id: employee.national_id || profile.national_id || null
       });
       setIsEditing(false);
     }
-  }, [employee, isNew]);
+  }, [employee, isNew, setIsEditing]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -74,14 +70,18 @@ export default function EmployeeProfile({
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
-    setPhotoFile(file);
-    if (file) setForm(prev => ({ ...prev, photo: URL.createObjectURL(file) }));
+    if (file) {
+      setPhotoFile(file);
+      setForm(prev => ({ ...prev, photo: URL.createObjectURL(file) }));
+    }
   };
 
   const handleIdChange = (e) => {
     const file = e.target.files[0];
-    setIdFile(file);
-    if (file) setForm(prev => ({ ...prev, national_id: URL.createObjectURL(file) }));
+    if (file) {
+      setIdFile(file);
+      setForm(prev => ({ ...prev, national_id: URL.createObjectURL(file) }));
+    }
   };
 
   const handleSave = () => {
@@ -89,24 +89,40 @@ export default function EmployeeProfile({
       alert("Full Name and Email are required.");
       return;
     }
-    if (!window.confirm("Save changes?")) return;
+    if (!window.confirm("Save all changes?")) return;
 
     const payload = new FormData();
+
+    // Append all text fields
     Object.keys(form).forEach(key => {
-      if (form[key] != null && key !== "photo" && key !== "national_id") {
+      if (form[key] != null && 
+          key !== "photo" && 
+          key !== "national_id" && 
+          key !== "id") {   // don't send id as form field
         payload.append(key, form[key]);
       }
     });
 
-    if (photoFile) payload.append("photo", photoFile);
-    if (idFile) payload.append("national_id", idFile);
+    // Append files if selected
+    if (photoFile) {
+      payload.append("photo", photoFile);
+    }
+    if (idFile) {
+      payload.append("national_id", idFile);
+    }
 
+    // Important: Pass the FormData directly to HrPortal
     onSave && onSave(payload);
   };
 
-  const handleCancel = () => setIsEditing(false);
+  const handleCancel = () => {
+    setIsEditing(false);
+    // Optional: Reset files when cancelling
+    setPhotoFile(null);
+    setIdFile(null);
+  };
 
-  // Movement fields: Visible + Protected
+  // Movement fields: Visible + Protected (disabled in edit mode for existing employees)
   const renderMovementField = (label, name, type = "text") => (
     <div className="hp-form-group">
       <label>{label}</label>
@@ -154,10 +170,10 @@ export default function EmployeeProfile({
   return (
     <div className="hp-card">
       <h3>
-        {isNew ? "New Staff" : isEditing ? "Edit Employee" : "Employee Profile"}
+        {isNew ? "New Staff" : isEditing ? "Edit Employee Profile" : "Employee Profile"}
       </h3>
 
-      {/* PHOTO + NATIONAL ID */}
+      {/* PHOTO + NATIONAL ID SECTION */}
       <div className="hp-grid-2">
         <div className="hp-form-group">
           <label>Employee Photo</label>
@@ -166,25 +182,38 @@ export default function EmployeeProfile({
               src={typeof form.photo === "string" && form.photo.startsWith("blob:") 
                 ? form.photo 
                 : `https://hrms-owyj.onrender.com/storage/${form.photo}?t=${Date.now()}`}
-              alt="photo"
-              style={{ width: "120px", height: "120px", objectFit: "cover" }}
+              alt="Employee Photo"
+              style={{ width: "120px", height: "120px", objectFit: "cover", borderRadius: "8px" }}
             />
-          ) : <p>No photo</p>}
-          {isEditing && <input type="file" accept="image/*" onChange={handlePhotoChange} />}
+          ) : <p>No photo uploaded</p>}
+          {isEditing && (
+            <input 
+              type="file" 
+              accept="image/*" 
+              onChange={handlePhotoChange}
+              className="hp-file-input"
+            />
+          )}
         </div>
 
         <div className="hp-form-group">
-          <label>National ID</label>
+          <label>National ID / Document</label>
           {form.national_id ? (
             <img
               src={typeof form.national_id === "string" && form.national_id.startsWith("blob:") 
                 ? form.national_id 
                 : `https://hrms-owyj.onrender.com/storage/${form.national_id}?t=${Date.now()}`}
-              alt="id"
-              style={{ width: "180px" }}
+              alt="National ID"
+              style={{ width: "180px", border: "1px solid #ddd" }}
             />
-          ) : <p>No ID</p>}
-          {isEditing && <input type="file" onChange={handleIdChange} />}
+          ) : <p>No National ID uploaded</p>}
+          {isEditing && (
+            <input 
+              type="file" 
+              onChange={handleIdChange}
+              className="hp-file-input"
+            />
+          )}
         </div>
       </div>
 
@@ -198,7 +227,7 @@ export default function EmployeeProfile({
 
       <hr />
 
-      {/* Protected Fields (Movement controlled) */}
+      {/* Protected Movement Fields */}
       <div className="hp-grid-2">
         {renderMovementField("Department", "department")}
         {renderMovementField("Position", "position")}
@@ -227,18 +256,21 @@ export default function EmployeeProfile({
       <hr />
 
       {!isEditing ? (
-        <button onClick={() => setIsEditing(true)}>Edit Profile</button>
+        <button onClick={() => setIsEditing(true)} className="hp-btn hp-btn-view">
+          Edit Profile
+        </button>
       ) : (
         <>
-          <button onClick={handleSave}>Save Changes</button>
-          <button onClick={handleCancel}>Cancel</button>
+          <button onClick={handleSave} className="hp-btn">Save Changes</button>
+          <button onClick={handleCancel} className="hp-btn hp-btn-cancel">Cancel</button>
         </>
       )}
 
-      {employee?.id && (
+      {employee?.id && !isEditing && (
         <button 
           onClick={() => onDelete && onDelete(employee.id)}
-          style={{ backgroundColor: "#dc2626", color: "white", marginLeft: "10px" }}
+          className="hp-btn hp-btn-delete"
+          style={{ marginLeft: "10px" }}
         >
           Delete Employee
         </button>
