@@ -36,28 +36,21 @@ class EmployeeMovementController extends Controller
             'old_salary'          => 'nullable|numeric|min:0',
             'new_salary'          => 'nullable|numeric|min:0',
 
-            'effective_date'      => 'required|date|after_or_equal:today',
+            // ✅ FIXED (removed timezone problem)
+            'effective_date'      => 'required|date',
+
             'approved_by'         => 'nullable|string|max:255',
             'remarks'             => 'nullable|string|max:1000',
         ]);
 
-        return DB::transaction(function () use ($validated, $request) {
-            // Use all input instead of only validated to ensure every sent field is considered
-            $data = $request->all();   // This gets new_position_number even if it's empty string
+        return DB::transaction(function () use ($validated) {
 
-            // Merge validated rules with raw input (safer than $validated alone)
-            $movementData = array_merge($validated, [
-                'new_position_number' => $data['new_position_number'] ?? null,
-                'new_position'        => $data['new_position'] ?? null,
-                'new_department'      => $data['new_department'] ?? null,
-                'new_grade'           => $data['new_grade'] ?? null,
-                'new_step'            => $data['new_step'] ?? null,
-                'new_salary'          => $data['new_salary'] ?? null,
-            ]);
+            // ✅ Normalize empty strings → null
+            $movementData = $this->normalizeData($validated);
 
             $movement = EmployeeMovement::create($movementData);
 
-            // Update employee profile with new values
+            // Update employee profile
             $this->updateEmployeeProfile($movementData);
 
             return response()->json([
@@ -97,23 +90,18 @@ class EmployeeMovementController extends Controller
             'new_salary'          => 'nullable|numeric|min:0',
 
             'effective_date'      => 'required|date',
+
             'approved_by'         => 'nullable|string|max:255',
             'remarks'             => 'nullable|string|max:1000',
         ]);
 
-        return DB::transaction(function () use ($movement, $validated, $request) {
-            $data = $request->all();
+        return DB::transaction(function () use ($movement, $validated) {
 
-            $movementData = array_merge($validated, [
-                'new_position_number' => $data['new_position_number'] ?? null,
-                'new_position'        => $data['new_position'] ?? null,
-                'new_department'      => $data['new_department'] ?? null,
-                'new_grade'           => $data['new_grade'] ?? null,
-                'new_step'            => $data['new_step'] ?? null,
-                'new_salary'          => $data['new_salary'] ?? null,
-            ]);
+            // ✅ Normalize empty strings → null
+            $movementData = $this->normalizeData($validated);
 
             $movement->update($movementData);
+
             $this->updateEmployeeProfile($movementData);
 
             return response()->json([
@@ -123,7 +111,6 @@ class EmployeeMovementController extends Controller
         });
     }
 
-    // index, show, destroy methods remain unchanged
     public function index(Request $request)
     {
         $query = EmployeeMovement::with('employee')->latest();
@@ -150,6 +137,19 @@ class EmployeeMovementController extends Controller
     }
 
     /**
+     * Normalize empty strings to null
+     */
+    private function normalizeData(array $data): array
+    {
+        foreach ($data as $key => $value) {
+            if ($value === '') {
+                $data[$key] = null;
+            }
+        }
+        return $data;
+    }
+
+    /**
      * Safely update the employee's current profile
      */
     private function updateEmployeeProfile(array $data): void
@@ -170,7 +170,10 @@ class EmployeeMovementController extends Controller
         ];
 
         foreach ($fieldsToUpdate as $employeeField => $dataKey) {
-            if (array_key_exists($dataKey, $data) && $data[$dataKey] !== null && $data[$dataKey] !== '') {
+            if (
+                array_key_exists($dataKey, $data) &&
+                $data[$dataKey] !== null
+            ) {
                 if ($employeeField === 'salary') {
                     $employee->{$employeeField} = (float) $data[$dataKey];
                 } elseif ($employeeField === 'step') {
