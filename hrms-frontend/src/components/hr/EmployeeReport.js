@@ -84,12 +84,12 @@ export default function EmployeeReport({ employeeId }) {
 
       <hr className="report-divider" />
 
-      {/* PHOTO + NATIONAL ID ROW */}
+      {/* EMPLOYEE IDENTIFICATION - TWO SEPARATE IMAGES */}
       <section className="hp-report-section">
         <h3>Employee Identification</h3>
 
         <div className="hp-report-photo-id-row">
-          {/* LEFT: PHOTO */}
+          {/* LEFT: EMPLOYEE PHOTOGRAPH */}
           <div className="hp-report-photo-side">
             <label>Employee Photograph</label>
             {employee.photo ? (
@@ -103,7 +103,7 @@ export default function EmployeeReport({ employeeId }) {
             )}
           </div>
 
-          {/* RIGHT: NATIONAL ID */}
+          {/* RIGHT: NATIONAL IDENTIFICATION CARD */}
           <div className="hp-report-id-side">
             <label>National Identification Card</label>
             {employee.national_id ? (

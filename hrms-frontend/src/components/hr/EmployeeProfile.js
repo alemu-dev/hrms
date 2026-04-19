@@ -97,7 +97,7 @@ export default function EmployeeProfile({
       if (form[key] != null && 
           key !== "photo" && 
           key !== "national_id" && 
-          key !== "id") {   // don't send id as form field
+          key !== "id") {   
         payload.append(key, form[key]);
       }
     });
@@ -109,6 +109,13 @@ export default function EmployeeProfile({
     if (idFile) {
       payload.append("national_id", idFile);
     }
+
+    // ==================== DEBUG (remove later) ====================
+    console.log("🚀 FORM DATA BEING SENT TO LARAVEL:");
+    for (let [key, value] of payload.entries()) {
+      console.log(key, "=>", value);
+    }
+    // ============================================================
 
     // Important: Pass the FormData directly to HrPortal
     onSave && onSave(payload);

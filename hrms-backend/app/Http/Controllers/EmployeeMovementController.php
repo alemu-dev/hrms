@@ -15,43 +15,119 @@ class EmployeeMovementController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'employee_id'     => 'required|exists:employee_profiles,id',
-            'type'            => 'required|in:step_increment,grade_increment,promotion',
-            'old_position'    => 'nullable|string',
-            'new_position'    => 'nullable|string',
-            'old_grade'       => 'nullable|string',
-            'new_grade'       => 'nullable|string',
-            'old_step'        => 'nullable|numeric',
-            'new_step'        => 'nullable|numeric',
-            'old_salary'      => 'nullable|numeric',
-            'new_salary'      => 'nullable|numeric',
-            'effective_date'  => 'required|date',
-            'approved_by'     => 'nullable|string',
-            'remarks'         => 'nullable|string',
+            'employee_id'         => 'required|exists:employee_profiles,id',
+            'type'                => 'required|in:step_increment,grade_increment,promotion',
+
+            'old_position'        => 'nullable|string|max:255',
+            'new_position'        => 'nullable|string|max:255',
+
+            'old_position_number' => 'nullable|string|max:100',
+            'new_position_number' => 'nullable|string|max:100',
+
+            'old_department'      => 'nullable|string|max:255',
+            'new_department'      => 'nullable|string|max:255',
+
+            'old_grade'           => 'nullable|string|max:50',
+            'new_grade'           => 'nullable|string|max:50',
+
+            'old_step'            => 'nullable|integer|min:0',
+            'new_step'            => 'nullable|integer|min:0',
+
+            'old_salary'          => 'nullable|numeric|min:0',
+            'new_salary'          => 'nullable|numeric|min:0',
+
+            'effective_date'      => 'required|date|after_or_equal:today',
+            'approved_by'         => 'nullable|string|max:255',
+            'remarks'             => 'nullable|string|max:1000',
         ]);
 
-        return DB::transaction(function () use ($validated) {
+        return DB::transaction(function () use ($validated, $request) {
+            // Use all input instead of only validated to ensure every sent field is considered
+            $data = $request->all();   // This gets new_position_number even if it's empty string
 
-            $movement = EmployeeMovement::create($validated);
+            // Merge validated rules with raw input (safer than $validated alone)
+            $movementData = array_merge($validated, [
+                'new_position_number' => $data['new_position_number'] ?? null,
+                'new_position'        => $data['new_position'] ?? null,
+                'new_department'      => $data['new_department'] ?? null,
+                'new_grade'           => $data['new_grade'] ?? null,
+                'new_step'            => $data['new_step'] ?? null,
+                'new_salary'          => $data['new_salary'] ?? null,
+            ]);
 
-            // 🔥 update employee
-            $this->updateEmployeeProfile($validated);
+            $movement = EmployeeMovement::create($movementData);
+
+            // Update employee profile with new values
+            $this->updateEmployeeProfile($movementData);
 
             return response()->json([
-                'message' => 'Movement recorded successfully',
-                'data' => $movement
+                'message' => 'Employee movement recorded successfully',
+                'data'    => $movement->load('employee')
             ], 201);
         });
     }
 
     /**
-     * ✅ FIXED: Get movements (OPTIONAL FILTER)
+     * Update an existing movement
      */
+    public function update(Request $request, $id)
+    {
+        $movement = EmployeeMovement::findOrFail($id);
+
+        $validated = $request->validate([
+            'employee_id'         => 'required|exists:employee_profiles,id',
+            'type'                => 'required|in:step_increment,grade_increment,promotion',
+
+            'old_position'        => 'nullable|string|max:255',
+            'new_position'        => 'nullable|string|max:255',
+
+            'old_position_number' => 'nullable|string|max:100',
+            'new_position_number' => 'nullable|string|max:100',
+
+            'old_department'      => 'nullable|string|max:255',
+            'new_department'      => 'nullable|string|max:255',
+
+            'old_grade'           => 'nullable|string|max:50',
+            'new_grade'           => 'nullable|string|max:50',
+
+            'old_step'            => 'nullable|integer|min:0',
+            'new_step'            => 'nullable|integer|min:0',
+
+            'old_salary'          => 'nullable|numeric|min:0',
+            'new_salary'          => 'nullable|numeric|min:0',
+
+            'effective_date'      => 'required|date',
+            'approved_by'         => 'nullable|string|max:255',
+            'remarks'             => 'nullable|string|max:1000',
+        ]);
+
+        return DB::transaction(function () use ($movement, $validated, $request) {
+            $data = $request->all();
+
+            $movementData = array_merge($validated, [
+                'new_position_number' => $data['new_position_number'] ?? null,
+                'new_position'        => $data['new_position'] ?? null,
+                'new_department'      => $data['new_department'] ?? null,
+                'new_grade'           => $data['new_grade'] ?? null,
+                'new_step'            => $data['new_step'] ?? null,
+                'new_salary'          => $data['new_salary'] ?? null,
+            ]);
+
+            $movement->update($movementData);
+            $this->updateEmployeeProfile($movementData);
+
+            return response()->json([
+                'message' => 'Movement updated successfully',
+                'data'    => $movement->fresh()->load('employee')
+            ]);
+        });
+    }
+
+    // index, show, destroy methods remain unchanged
     public function index(Request $request)
     {
         $query = EmployeeMovement::with('employee')->latest();
 
-        // 🔥 ONLY THIS LINE FIXES YOUR PROBLEM
         if ($request->has('employee_id')) {
             $query->where('employee_id', $request->employee_id);
         }
@@ -59,87 +135,50 @@ class EmployeeMovementController extends Controller
         return response()->json($query->get());
     }
 
-    /**
-     * Get single movement
-     */
     public function show($id)
     {
         $movement = EmployeeMovement::with('employee')->findOrFail($id);
         return response()->json($movement);
     }
 
-    /**
-     * Update movement
-     */
-    public function update(Request $request, $id)
-    {
-        $movement = EmployeeMovement::findOrFail($id);
-
-        $validated = $request->validate([
-            'employee_id'     => 'required|exists:employee_profiles,id',
-            'type'            => 'required|in:step_increment,grade_increment,promotion',
-            'old_position'    => 'nullable|string',
-            'new_position'    => 'nullable|string',
-            'old_grade'       => 'nullable|string',
-            'new_grade'       => 'nullable|string',
-            'old_step'        => 'nullable|numeric',
-            'new_step'        => 'nullable|numeric',
-            'old_salary'      => 'nullable|numeric',
-            'new_salary'      => 'nullable|numeric',
-            'effective_date'  => 'required|date',
-            'approved_by'     => 'nullable|string',
-            'remarks'         => 'nullable|string',
-        ]);
-
-        return DB::transaction(function () use ($movement, $validated) {
-
-            $movement->update($validated);
-
-            $this->updateEmployeeProfile($validated);
-
-            return response()->json([
-                'message' => 'Movement updated successfully',
-                'data' => $movement
-            ]);
-        });
-    }
-
-    /**
-     * Delete movement
-     */
     public function destroy($id)
     {
         $movement = EmployeeMovement::findOrFail($id);
         $movement->delete();
 
-        return response()->json([
-            'message' => 'Movement deleted successfully'
-        ]);
+        return response()->json(['message' => 'Movement deleted successfully']);
     }
 
     /**
-     * Update employee safely
+     * Safely update the employee's current profile
      */
-    private function updateEmployeeProfile($data)
+    private function updateEmployeeProfile(array $data): void
     {
         $employee = EmployeeProfile::find($data['employee_id']);
 
-        if (!$employee) return;
-
-        if (array_key_exists('new_position', $data) && $data['new_position'] !== '') {
-            $employee->position = $data['new_position'];
+        if (!$employee) {
+            return;
         }
 
-        if (array_key_exists('new_salary', $data) && $data['new_salary'] !== '') {
-            $employee->salary = (float) $data['new_salary'];
-        }
+        $fieldsToUpdate = [
+            'position'        => 'new_position',
+            'position_number' => 'new_position_number',
+            'department'      => 'new_department',
+            'grade'           => 'new_grade',
+            'step'            => 'new_step',
+            'salary'          => 'new_salary',
+        ];
 
-        if (array_key_exists('new_grade', $data) && $data['new_grade'] !== '') {
-            $employee->grade = $data['new_grade'];
-        }
-
-        if (array_key_exists('new_step', $data) && $data['new_step'] !== '') {
-            $employee->step = (int) $data['new_step'];
+        foreach ($fieldsToUpdate as $employeeField => $dataKey) {
+            if (array_key_exists($dataKey, $data) && $data[$dataKey] !== null && $data[$dataKey] !== '') {
+                if ($employeeField === 'salary') {
+                    $employee->{$employeeField} = (float) $data[$dataKey];
+                } elseif ($employeeField === 'step') {
+                    $employee->{$employeeField} = (int) $data[$dataKey];
+                } else {
+                    $employee->{$employeeField} = $data[$dataKey];
+                }
+            }
         }
 
         $employee->save();

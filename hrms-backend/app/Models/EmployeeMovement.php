@@ -2,30 +2,40 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class EmployeeMovement extends Model
 {
+    use HasFactory;
+
     protected $table = 'employee_movements';
 
     protected $fillable = [
         'employee_id',
         'type',
+
         'old_position',
+        'old_position_number',      // ← Must include
         'new_position',
+        'new_position_number',      // ← Must include
+
         'old_grade',
         'new_grade',
+
         'old_step',
         'new_step',
+
         'old_salary',
         'new_salary',
+
         'effective_date',
         'approved_by',
-        'remarks'
+        'remarks',
     ];
 
     /**
-     * Relationship: Movement belongs to EmployeeProfile
+     * Relationship with EmployeeProfile
      */
     public function employee()
     {

@@ -64,7 +64,7 @@ class EmployeeController extends Controller
 
     /**
      * ===============================
-     * 🔥 GET SINGLE EMPLOYEE (ONLY ADDITION)
+     * 🔥 GET SINGLE EMPLOYEE
      * ===============================
      */
     public function show($id)
@@ -142,35 +142,40 @@ class EmployeeController extends Controller
     public function store(Request $request)
     {
         $validatedUser = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
         ]);
 
         $validatedProfile = $request->validate([
-            'full_name' => 'required|string|max:255',
-            'department' => 'required|string|max:255',
-            'position' => 'required|string|max:255',
-            'salary' => 'required|numeric',
-            'gender' => 'required|string',
-            'hire_date' => 'nullable|date',
-            'status' => 'required|string'
+            'full_name'       => 'required|string|max:255',
+            'department'      => 'required|string|max:255',
+            'position'        => 'required|string|max:255',
+            'position_number' => 'nullable|string|max:100',
+            'grade'           => 'nullable|string|max:50',
+            'step'            => 'nullable|integer|min:0',
+            'salary'          => 'required|numeric',
+            'gender'          => 'required|string',
+            'hire_date'       => 'nullable|date',
+            'status'          => 'required|string',
+            'phone_number'    => 'nullable|string',
+            'address'         => 'nullable|string',
         ]);
 
         return DB::transaction(function () use ($validatedUser, $validatedProfile, $request) {
 
             $user = User::create([
-                'name' => $validatedUser['name'],
-                'email' => $validatedUser['email'],
+                'name'     => $validatedUser['name'],
+                'email'    => $validatedUser['email'],
                 'password' => Hash::make($validatedUser['password']),
-                'role' => 'employee',
+                'role'     => 'employee',
             ]);
 
             // 🔥 decode JSON
-            $education = json_decode($request->education, true) ?? [];
+            $education  = json_decode($request->education, true) ?? [];
             $experience = json_decode($request->experience, true) ?? [];
-            $documents = json_decode($request->documents, true) ?? [];
-            $biography = json_decode($request->biography, true) ?? [];
+            $documents  = json_decode($request->documents, true) ?? [];
+            $biography  = json_decode($request->biography, true) ?? [];
 
             $data = [
                 ...$validatedProfile,
@@ -226,25 +231,22 @@ class EmployeeController extends Controller
             ]);
 
             // 🔥 decode JSON
-            $education = json_decode($request->education, true) ?? [];
+            $education  = json_decode($request->education, true) ?? [];
             $experience = json_decode($request->experience, true) ?? [];
-            $documents = json_decode($request->documents, true) ?? [];
-            $biography = json_decode($request->biography, true) ?? [];
+            $documents  = json_decode($request->documents, true) ?? [];
+            $biography  = json_decode($request->biography, true) ?? [];
 
             $data = $request->only([
-                'full_name','department','position',
-                'salary','gender','status',
-                'hire_date','phone_number',
-                'address','date_of_birth'
+                'full_name', 'department', 'position', 'position_number',
+                'grade', 'step', 'salary', 'gender', 'status',
+                'hire_date', 'phone_number', 'address'
             ]);
 
             // ✅ PHOTO UPDATE
             if ($request->hasFile('photo')) {
-
                 if ($employee->photo && file_exists(storage_path('app/public/' . $employee->photo))) {
                     unlink(storage_path('app/public/' . $employee->photo));
                 }
-
                 $data['photo'] = $request->file('photo')->store('photos', 'public');
             }
 

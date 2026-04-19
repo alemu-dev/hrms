@@ -1,11 +1,8 @@
 /* =========================================
    HRMS PORTAL - CLEAN PROFESSIONAL UI
-   Minimal background + Colorful by function
+   Fixed Report Layout - Separate Photo & National ID
 ========================================= */
 
-/* ===========================
-   DESIGN SYSTEM
-=========================== */
 :root {
   --hp-bg: #f4f7fb;
   --hp-surface: #ffffff;
@@ -13,22 +10,18 @@
   --hp-muted: #64748b;
   --hp-border: #e2e8f0;
 
-  --hp-save: #166534;      /* Green - Save */
-  --hp-cancel: #374151;    /* Gray - Cancel */
-  --hp-delete: #b91c1c;    /* Red - Delete */
-  --hp-add: #0e7490;       /* Teal - Add */
-  --hp-view: #1e40af;      /* Blue - View */
-  --hp-report: #6b21a8;    /* Purple - Report */
-  --hp-tab: #1e40af;       /* Blue for tabs */
+  --hp-save: #166534;
+  --hp-cancel: #374151;
+  --hp-delete: #b91c1c;
+  --hp-add: #0e7490;
+  --hp-tab: #334155;
 
   --hp-radius: 12px;
-  --hp-shadow: 0 10px 30px rgba(2, 6, 23, 0.07);
+  --hp-shadow: 0 10px 30px rgba(2, 6, 23, 0.08);
 }
 
-/* =========================== */
-* { 
-  box-sizing: border-box; 
-}
+/* Basic */
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -37,9 +30,7 @@ body {
   color: var(--hp-text);
 }
 
-/* ===========================
-   SIDEBAR - Keep Dark/Blue
-=========================== */
+/* Sidebar */
 .hp-sidebar {
   background: #0f172a;
   border-radius: var(--hp-radius);
@@ -58,375 +49,252 @@ body {
   cursor: pointer;
   font-weight: 600;
   text-align: left;
-  transition: all 0.2s;
 }
 
-.hp-sidebar button:hover {
-  background: #1e40af;
-  color: white;
-}
-
-/* ===========================
-   MAIN CARD
-=========================== */
+/* Main Card */
 .hp-card {
   background: var(--hp-surface);
   border-radius: var(--hp-radius);
   box-shadow: var(--hp-shadow);
-  padding: 24px;
+  padding: 28px;
+  border: 1px solid var(--hp-border);
 }
 
-/* ===========================
-   FORM & INPUTS
-=========================== */
+/* Buttons - Clean & Professional */
+.hp-btn,
+button[type="submit"],
+.hp-btn-primary,
+.hp-btn-view,
+.hp-btn-report,
+.hp-btn-cancel,
+.hp-btn-delete {
+  padding: 11px 22px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  color: white;
+  font-size: 14.5px;
+  transition: all 0.2s;
+}
+
+.hp-btn-view,
+.hp-btn-report {
+  background: #1f2937;     /* Dark neutral - no blue */
+  color: white;
+}
+
+.hp-btn-view:hover,
+.hp-btn-report:hover {
+  background: #111827;
+}
+
+.hp-btn-cancel { background: var(--hp-cancel); }
+.hp-btn-delete { background: var(--hp-delete); }
+.hp-btn-primary,
+button[type="submit"] { background: var(--hp-save); }
+
+/* Form & Grid */
 .hp-form-group {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 16px;
+  gap: 16px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
 }
 
 .hp-form-group label {
   width: 160px;
-  font-weight: 500;
+  font-weight: 600;
   color: #334155;
-  flex-shrink: 0;
 }
 
-.hp-form-input,
-.hp-form-group input,
-.hp-form-group select,
-.hp-form-group textarea {
+.hp-form-input {
   flex: 1;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border: 1.5px solid #cbd5e1;
   border-radius: 8px;
-  font-size: 14.5px;
   background: white;
 }
 
-.hp-form-input:focus,
-.hp-form-group input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
-}
-
-/* ===========================
-   BUTTONS - COLORFUL BY FUNCTION
-=========================== */
-
-/* Save Buttons */
-button:contains("Save"), 
-button[onclick*="handleSave"],
-.hp-btn-save {
-  background: transparent;
-  color: var(--hp-save);
-  border: 2px solid var(--hp-save);
-  font-weight: 700;
-}
-
-button:contains("Save"):hover,
-.hp-btn-save:hover {
-  background: var(--hp-save);
-  color: white;
-}
-
-/* Cancel */
-button:contains("Cancel") {
-  background: transparent;
-  color: var(--hp-cancel);
-  border: 2px solid var(--hp-cancel);
-}
-
-button:contains("Cancel"):hover {
-  background: var(--hp-cancel);
-  color: white;
-}
-
-/* Delete */
-.hp-btn-delete,
-button:contains("Delete") {
-  background: transparent;
-  color: var(--hp-delete);
-  border: 2px solid var(--hp-delete);
-  font-weight: 600;
-}
-
-.hp-btn-delete:hover,
-button:contains("Delete"):hover {
-  background: var(--hp-delete);
-  color: white;
-}
-
-/* Add Buttons */
-.hp-btn-add,
-button:contains("Add") {
-  background: transparent;
-  color: var(--hp-add);
-  border: 2px solid var(--hp-add);
-  font-weight: 600;
-}
-
-.hp-btn-add:hover,
-button:contains("Add"):hover {
-  background: var(--hp-add);
-  color: white;
-}
-
-/* View Buttons */
-button:contains("View") {
-  background: transparent;
-  color: var(--hp-view);
-  border: 2px solid var(--hp-view);
-}
-
-button:contains("View"):hover {
-  background: var(--hp-view);
-  color: white;
-}
-
-/* Report Buttons */
-button:contains("Report") {
-  background: transparent;
-  color: var(--hp-report);
-  border: 2px solid var(--hp-report);
-}
-
-button:contains("Report"):hover {
-  background: var(--hp-report);
-  color: white;
-}
-
-/* Small delete inside tabs */
-.hp-btn-delete-small {
-  background: transparent;
-  color: var(--hp-delete);
-  border: 1.5px solid var(--hp-delete);
-  padding: 6px 12px;
-  font-size: 13px;
-}
-
-.hp-btn-delete-small:hover {
-  background: var(--hp-delete);
-  color: white;
-}
-
-/* ===========================
-   TABS
-=========================== */
-.hp-tabs-nav {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-.hp-tabs-nav button {
-  background: transparent;
-  color: var(--hp-tab);
-  border: 2px solid #e2e8f0;
-  padding: 10px 24px;
-  border-radius: 30px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.hp-tabs-nav button:hover {
-  border-color: var(--hp-tab);
-}
-
-.hp-tabs-nav button.active {
-  background: var(--hp-tab);
-  color: white;
-  border-color: var(--hp-tab);
-}
-
-/* ===========================
-   TABLE
-=========================== */
-.hp-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.hp-table th {
-  padding: 14px 12px;
+.hp-form-input[disabled] {
   background: #f8fafc;
-  text-align: left;
-  font-weight: 600;
-  color: #1e2937;
+  color: #64748b;
 }
 
-.hp-table td {
-  padding: 14px 12px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-/* ===========================
-   REPORT STYLES
-=========================== */
-.hp-report {
-  background: white;
-  max-width: 820px;
-  margin: 30px auto;
-  padding: 40px 50px;
-  font-family: "Times New Roman", serif;
-  color: #000;
-  line-height: 1.7;
-}
-
+/* Grid */
 .hp-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 40px;
+  gap: 24px 32px;
 }
 
-.hp-photo, .hp-id-card-right {
-  border: 2px solid #000;
-  border-radius: 6px;
+/* ========================
+   GOVERNMENTAL REPORT - FIXED LAYOUT
+   ======================== */
+.hp-report {
+  background: white;
+  padding: 50px 60px;
+  max-width: 1000px;
+  margin: 30px auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+  line-height: 1.8;
+  color: #1f2937;
+  font-family: Georgia, serif;
 }
 
-/* ===========================
-   PRINT MODE
-=========================== */
-@media print {
-  .hp-sidebar, button { 
-    display: none !important; 
-  }
-  .hp-report {
-    margin: 0;
-    padding: 0;
-    box-shadow: none;
-  }
-  @page {
-    size: A4;
-    margin: 20mm;
-  }
-}
-/* GOVERNMENTAL REPORT LAYOUT - PHOTO LEFT + ID RIGHT */
-.hp-report-photo-id-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 50px;
-  margin: 25px 0 35px 0;
-  flex-wrap: wrap;
-}
-
-.hp-report-photo-side,
-.hp-report-id-side {
-  flex: 1;
-  min-width: 300px;
-  text-align: center;
-}
-
-.hp-report-photo-side label,
-.hp-report-id-side label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 10px;
-  color: #1e2937;
-}
-
-.hp-report-employee-photo {
-  width: 100%;
-  max-width: 260px;
-  height: 320px;
-  object-fit: cover;
-  border: 4px solid #000;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-}
-
-.hp-report-national-id {
-  width: 100%;
-  max-width: 420px;
-  height: auto;
-  border: 4px solid #000;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-}
-
-.hp-no-photo-box {
-  width: 260px;
-  height: 320px;
-  border: 3px dashed #999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto;
-  color: #666;
-  background: #f8fafc;
-  font-style: italic;
-}
-
-.hp-report-details {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 50px;
-  margin-top: 20px;
-}
-
-.report-divider {
-  border-top: 2px solid #000;
-  margin: 25px 0;
-}
-
-.report-title {
-  font-size: 18px;
-  margin: 15px 0 5px 0;
-}
-/* ====================== IMPROVED OFFICIAL HEADER ====================== */
 .hp-report-header {
   text-align: center;
-  margin-bottom: 35px;
-  color: #000;
+  margin-bottom: 50px;
 }
 
 .hp-report-header img {
-  display: block;
-  margin: 0 auto 15px;
+  width: 90px;
+  margin-bottom: 15px;
 }
 
 .hp-report-main-title {
-  font-size: 23px;
+  font-size: 28px;
   font-weight: 700;
-  margin: 8px 0 6px 0;
-  color: #1e2937;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 10px 0;
 }
 
 .hp-report-agency {
-  font-size: 19px;
+  font-size: 21px;
   font-weight: 600;
-  margin: 6px 0;
-  color: #1e2937;
 }
 
 .hp-report-directorate {
   font-size: 17px;
-  font-weight: 500;
-  margin: 6px 0 20px 0;
-  color: #334155;
-}
-
-.hp-report-title-section {
-  margin: 25px 0 12px 0;
+  color: #475569;
 }
 
 .report-title {
   font-size: 26px;
   font-weight: 700;
-  letter-spacing: 1.2px;
-  margin: 0;
+  margin: 40px 0 20px 0;
   color: #000;
-  text-transform: uppercase;
+  text-align: center;
 }
 
 .hp-report-date {
   text-align: right;
-  font-size: 14.5px;
+  font-size: 15px;
   color: #444;
-  margin-top: 15px;
+  margin-top: 10px;
 }
 
-/* Keep your existing report styles (photo-id-row, divider, etc.) */
+.report-divider {
+  border-top: 3px solid #000;
+  margin: 45px 0 35px 0;
+}
+
+/* FIXED: Separate Photo and National ID */
+.hp-report-photo-id-row {
+  display: flex;
+  justify-content: center;
+  gap: 80px;
+  margin: 50px 0;
+  flex-wrap: wrap;
+}
+
+.hp-report-photo-side,
+.hp-report-id-side {
+  text-align: center;
+  flex: 1;
+  min-width: 300px;
+}
+
+.hp-report-photo-side label,
+.hp-report-id-side label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 15px;
+  font-size: 16px;
+  color: #1f2937;
+}
+
+/* Employee Photo */
+.hp-report-employee-photo {
+  width: 100%;
+  max-width: 280px;
+  height: 340px;
+  object-fit: cover;
+  border: 6px solid #000;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+/* National ID Card */
+.hp-report-national-id {
+  width: 100%;
+  max-width: 480px;
+  border: 6px solid #000;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  background: #fff;
+}
+
+/* No Photo Placeholder */
+.hp-no-photo-box {
+  width: 280px;
+  height: 340px;
+  border: 4px dashed #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  background: #f8fafc;
+  color: #666;
+  font-style: italic;
+}
+
+/* Details Section */
+.hp-report-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 50px;
+  margin-top: 40px;
+  font-size: 16px;
+}
+
+/* Report Cards */
+.hp-report-card {
+  background: #f8fafc;
+  padding: 18px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  border-left: 5px solid #166534;
+}
+
+/* Signatures */
+.hp-signatures {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 90px;
+  font-size: 16px;
+}
+
+.hp-signatures p {
+  margin: 15px 0 50px 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hp-report { padding: 30px 20px; }
+  .hp-report-photo-id-row { 
+    flex-direction: column; 
+    gap: 40px; 
+    align-items: center;
+  }
+  .hp-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* Print */
+@media print {
+  .hp-sidebar, button { display: none !important; }
+  .hp-report { margin: 0; padding: 30px; box-shadow: none; }
+  @page { size: A4 landscape; margin: 15mm; }
+}

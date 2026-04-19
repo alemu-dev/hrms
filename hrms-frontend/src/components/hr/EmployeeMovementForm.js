@@ -31,7 +31,7 @@ export default function EmployeeMovementForm() {
 
   const token = localStorage.getItem("auth_token");
 
-  // ✅ FETCH EMPLOYEES (FIXED)
+  // Fetch employees list
   const fetchEmployees = async () => {
     try {
       const res = await fetch(`${API_BASE}/employees`, {
@@ -42,19 +42,14 @@ export default function EmployeeMovementForm() {
       });
 
       const data = await res.json();
-
-      console.log("EMPLOYEES RESPONSE:", data);
-
-      // ✅ Handles: {data: [...]}, [...] , {employees: [...]}
       const list = data?.data || data?.employees || data || [];
       setEmployees(Array.isArray(list) ? list : []);
-
     } catch (err) {
       console.error("EMPLOYEE FETCH ERROR:", err);
     }
   };
 
-  // ✅ FETCH EMPLOYEE DETAILS (FIXED 🔥)
+  // Fetch selected employee details (including position_number)
   const fetchEmployeeDetails = async (id) => {
     if (!id) return;
 
@@ -67,15 +62,9 @@ export default function EmployeeMovementForm() {
       });
 
       const data = await res.json();
-
-      console.log("FULL RESPONSE:", data);
-
-      // ✅ Normalize backend response
       const emp = data?.data || data?.employee || data?.result || data;
 
-      console.log("EXTRACTED EMP:", emp);
-
-      if (res.ok && emp) {
+      if (emp) {
         setOldDepartment(emp.department ?? "");
         setOldPosition(emp.position ?? "");
         setOldPositionNumber(emp.position_number ?? "");
@@ -83,7 +72,6 @@ export default function EmployeeMovementForm() {
         setOldGrade(emp.grade ?? "");
         setOldStep(emp.step ?? "");
       }
-
     } catch (err) {
       console.error("DETAIL FETCH ERROR:", err);
     }
@@ -97,81 +85,76 @@ export default function EmployeeMovementForm() {
     fetchEmployeeDetails(employeeId);
   }, [employeeId]);
 
-  // ✅ SUBMIT
+  // ✅ FIXED SUBMIT - Now properly sends empty values for unchanged "new" fields
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!employeeId) {
-      setMessage("❌ Please select employee");
+      setMessage("❌ Please select an employee");
+      return;
+    }
+    if (!effectiveDate) {
+      setMessage("❌ Effective date is required");
       return;
     }
 
-    const finalDepartment = newDepartment || oldDepartment;
-    const finalPosition = newPosition || oldPosition;
-    const finalPositionNumber = newPositionNumber || oldPositionNumber;
-    const finalSalary = newSalary || oldSalary;
-    const finalGrade = newGrade || oldGrade;
-    const finalStep = newStep || oldStep;
-
-    if (!window.confirm("⚠️ This will permanently change employee data. Continue?")) return;
-    if (!window.confirm("❗sure? This cannot be undone.")) return;
+    if (!window.confirm("⚠️ This will update employee current data. Continue?")) return;
 
     try {
+      const formData = new FormData();
+
+      formData.append("employee_id", employeeId);
+      formData.append("type", type);
+
+      formData.append("old_position", oldPosition || "");
+      formData.append("new_position", newPosition || "");
+
+      formData.append("old_position_number", oldPositionNumber || "");
+      formData.append("new_position_number", newPositionNumber || "");   // ← Fixed: send empty string instead of old value
+
+      formData.append("old_department", oldDepartment || "");
+      formData.append("new_department", newDepartment || "");
+
+      formData.append("old_grade", oldGrade || "");
+      formData.append("new_grade", newGrade || "");
+
+      formData.append("old_step", oldStep || "");
+      formData.append("new_step", newStep || "");
+
+      formData.append("old_salary", oldSalary || "");
+      formData.append("new_salary", newSalary || "");
+
+      formData.append("effective_date", effectiveDate);
+
       const res = await fetch(`${API_BASE}/movements`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json"
+          // Do NOT set Content-Type when using FormData
         },
-        body: JSON.stringify({
-          employee_id: employeeId,
-          type,
-
-          old_department: oldDepartment,
-          new_department: finalDepartment,
-
-          old_position: oldPosition,
-          new_position: finalPosition,
-
-          old_position_number: oldPositionNumber,
-          new_position_number: finalPositionNumber,
-
-          old_salary: oldSalary,
-          new_salary: finalSalary,
-
-          old_grade: oldGrade,
-          new_grade: finalGrade,
-
-          old_step: oldStep,
-          new_step: finalStep,
-
-          effective_date: effectiveDate
-        })
+        body: formData
       });
 
-      if (res.ok) {
-        setMessage("✅ Saved successfully");
-        resetForm();
-      } else {
-        const data = await res.json();
-        setMessage("❌ " + (data.message || "Failed"));
-      }
+      const responseData = await res.json().catch(() => ({}));
 
+      if (res.ok) {
+        setMessage("✅ Movement recorded successfully!");
+        // Clear only the "new" fields after success
+        setNewPosition("");
+        setNewPositionNumber("");
+        setNewDepartment("");
+        setNewSalary("");
+        setNewGrade("");
+        setNewStep("");
+      } else {
+        console.error("Server Error:", responseData);
+        setMessage("❌ " + (responseData.message || "Failed to save movement"));
+      }
     } catch (err) {
       console.error(err);
-      setMessage("❌ Server error");
+      setMessage("❌ Server error. Please check console.");
     }
-  };
-
-  const resetForm = () => {
-    setEmployeeId("");
-    setNewDepartment("");
-    setNewPosition("");
-    setNewPositionNumber("");
-    setNewSalary("");
-    setNewGrade("");
-    setNewStep("");
-    setEffectiveDate("");
   };
 
   return (
@@ -180,23 +163,21 @@ export default function EmployeeMovementForm() {
 
       <form onSubmit={handleSubmit} className="admin-form">
 
-        {/* EMPLOYEE */}
         <div className="form-group">
           <label>Select Employee:</label>
           <select
             value={employeeId}
-            onChange={(e) => setEmployeeId(Number(e.target.value))} // ✅ FIXED
+            onChange={(e) => setEmployeeId(Number(e.target.value))}
           >
             <option value="">-- Choose Employee --</option>
             {employees.map(emp => (
               <option key={emp.id} value={emp.id}>
-                {emp.full_name} ({emp.department})
+                {emp.full_name} ({emp.department || 'No Dept'})
               </option>
             ))}
           </select>
         </div>
 
-        {/* TYPE */}
         <div className="form-group">
           <label>Movement Type:</label>
           <select value={type} onChange={(e) => setType(e.target.value)}>
@@ -206,16 +187,17 @@ export default function EmployeeMovementForm() {
           </select>
         </div>
 
-        {/* GRID */}
         <div className="hp-grid-2">
-
           <div>
             <label>Old Department</label>
             <input value={oldDepartment} disabled />
           </div>
           <div>
             <label>New Department</label>
-            <input value={newDepartment} onChange={e => setNewDepartment(e.target.value)} />
+            <input 
+              value={newDepartment} 
+              onChange={e => setNewDepartment(e.target.value)} 
+            />
           </div>
 
           <div>
@@ -224,7 +206,10 @@ export default function EmployeeMovementForm() {
           </div>
           <div>
             <label>New Position</label>
-            <input value={newPosition} onChange={e => setNewPosition(e.target.value)} />
+            <input 
+              value={newPosition} 
+              onChange={e => setNewPosition(e.target.value)} 
+            />
           </div>
 
           <div>
@@ -233,7 +218,10 @@ export default function EmployeeMovementForm() {
           </div>
           <div>
             <label>New Position No</label>
-            <input value={newPositionNumber} onChange={e => setNewPositionNumber(e.target.value)} />
+            <input 
+              value={newPositionNumber} 
+              onChange={e => setNewPositionNumber(e.target.value)} 
+            />
           </div>
 
           <div>
@@ -242,7 +230,10 @@ export default function EmployeeMovementForm() {
           </div>
           <div>
             <label>New Grade</label>
-            <input value={newGrade} onChange={e => setNewGrade(e.target.value)} />
+            <input 
+              value={newGrade} 
+              onChange={e => setNewGrade(e.target.value)} 
+            />
           </div>
 
           <div>
@@ -251,7 +242,10 @@ export default function EmployeeMovementForm() {
           </div>
           <div>
             <label>New Step</label>
-            <input value={newStep} onChange={e => setNewStep(e.target.value)} />
+            <input 
+              value={newStep} 
+              onChange={e => setNewStep(e.target.value)} 
+            />
           </div>
 
           <div>
@@ -260,9 +254,11 @@ export default function EmployeeMovementForm() {
           </div>
           <div>
             <label>New Salary</label>
-            <input value={newSalary} onChange={e => setNewSalary(e.target.value)} />
+            <input 
+              value={newSalary} 
+              onChange={e => setNewSalary(e.target.value)} 
+            />
           </div>
-
         </div>
 
         <div className="form-group">
@@ -278,7 +274,7 @@ export default function EmployeeMovementForm() {
         <button type="submit">Save Movement</button>
       </form>
 
-      {message && <p>{message}</p>}
+      {message && <p className="message" style={{ marginTop: "15px", fontWeight: "bold" }}>{message}</p>}
     </div>
   );
 }

@@ -23,10 +23,7 @@ import {
   Area,
 } from "recharts";
 
-// 🔥 UPDATE THIS TO YOUR ACTUAL LARAVEL BACKEND URL
-// It should be the Render (or other) service where your Laravel API is deployed
-const API_BASE = "https://hrms-owyj.onrender.com/api";  
-// Change it to something like: "https://your-laravel-backend.onrender.com/api"
+const API_BASE = "https://hrms-owyj.onrender.com/api";
 
 export default function HrPortal() {
   const [activeScreen, setActiveScreen] = useState("dashboard");
@@ -45,7 +42,7 @@ export default function HrPortal() {
   // Report
   const [reportUserId, setReportUserId] = useState(null);
 
-  const [chartStyle, setChartStyle] = useState("bar");
+  const [chartStyle, setChartStyle] = useState("pie"); // Changed default to "pie"
 
   const [lastFetchedSnapshot, setLastFetchedSnapshot] = useState(null);
 
@@ -72,7 +69,6 @@ export default function HrPortal() {
 
       let data = await res.json();
 
-      // Fallback endpoint
       if (!Array.isArray(data) || data.length === 0) {
         res = await fetch(`${API_BASE}/employee-profile`, {
           headers: {
@@ -151,7 +147,6 @@ export default function HrPortal() {
     }
 
     if (!emp) {
-      // Add new employee
       setSelectedEmployee(null);
       setLastFetchedSnapshot(null);
       setEducation([]);
@@ -183,7 +178,6 @@ export default function HrPortal() {
     if (!fullName.trim()) return alert("Full name is required");
     if (!email.trim()) return alert("Email is required");
 
-    // Fix hire_date format
     let hire_date = formData.get("hire_date");
     if (hire_date && hire_date.includes("/")) {
       const parts = hire_date.split("/");
@@ -199,62 +193,38 @@ export default function HrPortal() {
     try {
       const sendFormData = new FormData();
 
-      // Basic fields
+      for (let [key, value] of formData.entries()) {
+        if (key !== "id") {
+          sendFormData.append(key, value);
+        }
+      }
+
       sendFormData.append("full_name", fullName);
       sendFormData.append("name", fullName);
       sendFormData.append("email", email);
-      sendFormData.append("position_number", formData.get("position_number") || "");
-      sendFormData.append("grade", formData.get("grade") || "");
-      sendFormData.append("step", formData.get("step") || "");
-      sendFormData.append("department", formData.get("department") || "");
-      sendFormData.append("position", formData.get("position") || "");
-      sendFormData.append("gender", formData.get("gender") || "");
-      sendFormData.append("salary", formData.get("salary") || "");
       sendFormData.append("hire_date", hire_date || "");
-      sendFormData.append("status", formData.get("status") || "");
-      sendFormData.append("phone_number", formData.get("phone_number") || "");
-      sendFormData.append("address", formData.get("address") || "");
 
-      // Files
       if (formData.get("photo")) sendFormData.append("photo", formData.get("photo"));
       if (formData.get("national_id")) sendFormData.append("national_id", formData.get("national_id"));
 
-      // Complex arrays as JSON strings
       sendFormData.append("education", JSON.stringify(educationList));
       sendFormData.append("experience", JSON.stringify(experienceList));
       sendFormData.append("biography", JSON.stringify(biographyList?.[0] || { bio_text: "" }));
       sendFormData.append("documents", JSON.stringify(documents || []));
 
-      if (isUpdate) {
-        sendFormData.append("_method", "PUT");
-      }
-
-      if (!isUpdate) {
-        sendFormData.append("password", formData.get("password") || "password123");
-      }
-
-      console.log("🔄 Saving to:", url);
-      console.log("📤 Is Update:", isUpdate);
+      if (isUpdate) sendFormData.append("_method", "PUT");
+      if (!isUpdate) sendFormData.append("password", formData.get("password") || "password123");
 
       const res = await fetch(url, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          Accept: "application/json",        // ← Important
+          Accept: "application/json",
         },
         body: sendFormData,
       });
 
       const responseText = await res.text();
-      console.log("Status:", res.status);
-      console.log("Content-Type:", res.headers.get("content-type"));
-      console.log("Raw Response (first 700 chars):", responseText.substring(0, 700));
-
-      // Check if we got HTML instead of JSON
-      if (!responseText.trim().startsWith("{") && !responseText.trim().startsWith("[")) {
-        throw new Error(`Expected JSON but received HTML (Status ${res.status})`);
-      }
-
       const data = JSON.parse(responseText);
 
       if (res.ok) {
@@ -263,12 +233,11 @@ export default function HrPortal() {
         await loadEmployees();
         setActiveScreen("list");
       } else {
-        console.error("Server Error:", data);
         alert(data?.message || `❌ Save failed (${res.status})`);
       }
     } catch (err) {
-      console.error("💥 FULL SAVE ERROR:", err);
-      alert("❌ Save failed. Check browser console for details.\n\nLikely cause: Wrong API_BASE or backend returning HTML.");
+      console.error("Save error:", err);
+      alert("❌ Save failed. Check console.");
     }
   };
 
@@ -302,29 +271,23 @@ export default function HrPortal() {
 
       if (metric === "status") {
         const status = (emp.status || "Active").toLowerCase();
-        key = status === "on leave" ? "On Leave" : 
-              status === "inactive" ? "Inactive" : "Active";
-      } 
-      else if (metric === "gender") {
+        key = status === "on leave" ? "On Leave" : status === "inactive" ? "Inactive" : "Active";
+      } else if (metric === "gender") {
         key = (emp.gender || "Not Specified").toUpperCase();
         if (key !== "MALE" && key !== "FEMALE") key = "Not Specified";
-      } 
-      else if (metric === "salary") {
+      } else if (metric === "salary") {
         const s = parseFloat(emp.salary);
         if (isNaN(s)) key = "Unknown";
         else if (s < 15000) key = "0-15k";
         else if (s < 30000) key = "15k-30k";
         else if (s < 50000) key = "30k-50k";
         else key = "50k+";
-      } 
-      else if (metric === "education") {
+      } else if (metric === "education") {
         key = emp.user?.education?.[0]?.level || "Unknown";
-      } 
-      else {
+      } else {
         key = emp[metric] || "Unknown";
       }
 
-      key = key.toString();
       counts[key] = (counts[key] || 0) + 1;
     });
 
@@ -334,7 +297,7 @@ export default function HrPortal() {
     }));
   };
 
-  const COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#8b5cf6"];
+  const COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#8b5cf6", "#7c3aed"];
 
   const Chart = ({ title, metric }) => {
     const data = formatData(metric);
@@ -342,10 +305,18 @@ export default function HrPortal() {
     return (
       <div className="hp-card">
         <h3>{title}</h3>
-        <ResponsiveContainer width="100%" height={250}>
+        <ResponsiveContainer width="100%" height={280}>
           {chartStyle === "pie" ? (
             <PieChart>
-              <Pie data={data} dataKey="value" label>
+              <Pie 
+                data={data} 
+                dataKey="value" 
+                nameKey="name"
+                cx="50%" 
+                cy="50%" 
+                outerRadius={100}
+                label
+              >
                 {data.map((_, i) => (
                   <Cell key={i} fill={COLORS[i % COLORS.length]} />
                 ))}
@@ -358,7 +329,7 @@ export default function HrPortal() {
               <XAxis dataKey="name" />
               <YAxis allowDecimals={false} />
               <Tooltip />
-              <Line dataKey="value" stroke="#2563eb" strokeWidth={2} />
+              <Line dataKey="value" stroke="#2563eb" strokeWidth={3} />
             </LineChart>
           ) : chartStyle === "area" ? (
             <AreaChart data={data}>
@@ -366,7 +337,7 @@ export default function HrPortal() {
               <XAxis dataKey="name" />
               <YAxis allowDecimals={false} />
               <Tooltip />
-              <Area dataKey="value" fill="#93c5fd" />
+              <Area dataKey="value" fill="#93c5fd" stroke="#2563eb" />
             </AreaChart>
           ) : (
             <BarChart data={data}>
@@ -414,20 +385,26 @@ export default function HrPortal() {
               </div>
             </div>
 
+            {/* Chart Type Selector */}
             <div className="hp-card">
               <label>Select Chart Type: </label>
-              <select value={chartStyle} onChange={(e) => setChartStyle(e.target.value)}>
-                <option value="bar">Bar</option>
-                <option value="pie">Pie</option>
-                <option value="line">Line</option>
-                <option value="area">Area</option>
+              <select 
+                value={chartStyle} 
+                onChange={(e) => setChartStyle(e.target.value)}
+                style={{ marginLeft: "10px", padding: "8px", fontSize: "15px" }}
+              >
+                <option value="pie">Pie Chart</option>
+                <option value="bar">Bar Chart</option>
+                <option value="line">Line Chart</option>
+                <option value="area">Area Chart</option>
               </select>
             </div>
 
+            {/* Charts - Pie comes first */}
             <div className="hp-grid-2">
-              <Chart title="By Department" metric="department" />
               <Chart title="Gender Distribution" metric="gender" />
               <Chart title="Status Distribution" metric="status" />
+              <Chart title="By Department" metric="department" />
               <Chart title="Salary Distribution" metric="salary" />
               <Chart title="Education Level" metric="education" />
             </div>
