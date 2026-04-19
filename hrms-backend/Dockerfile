@@ -20,13 +20,12 @@ COPY . .
 # Install Laravel dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-# Expose port
+# Fix permissions (important for Laravel)
+RUN chown -R www-data:www-data /var/www \
+    && chmod -R 755 /var/www/storage
+
+# Expose port (Render uses 10000)
 EXPOSE 10000
 
-# ✅ FINAL SAFE START (WITH SEEDER)
-CMD php artisan migrate --force \
-    && php artisan db:seed --force \
-    && php artisan config:clear \
-    && php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan serve --host=0.0.0.0 --port=10000
+# ✅ FIXED START COMMAND (works on Render free tier)
+CMD ["sh", "-c", "php artisan migrate --force && php artisan config:clear && php artisan serve --host=0.0.0.0 --port=10000"]
